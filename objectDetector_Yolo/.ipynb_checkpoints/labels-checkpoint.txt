@@ -1,4 +1,0 @@
-truck
-car
-bike
-trailer
