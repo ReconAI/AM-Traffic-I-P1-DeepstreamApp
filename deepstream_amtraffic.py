@@ -28,6 +28,10 @@ from os import path
 
 from common.FPS import GETFPS
 
+from detection_accounting import *
+
+SAVE_IMAGES = False
+
 fps_streams={}
 
 TILED_OUTPUT_WIDTH=1920
@@ -38,6 +42,8 @@ PGIE_CLASS_ID_VEHICLE = 0
 PGIE_CLASS_ID_BICYCLE = 1
 PGIE_CLASS_ID_PERSON = 2
 PGIE_CLASS_ID_ROADSIGN = 3
+
+ALPR_FRAME_RATE = 10
 
 frame_n = 0
 global_alpr_engine=None
@@ -90,20 +96,21 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             except StopIteration:
                 break
 
-            print("obj_meta: object_id={0}; class_id={1}".format(obj_meta.object_id,obj_meta.class_id))
-
             #get secondary classifier data
             l_classifier= obj_meta.classifier_meta_list
+            classifier_class = ''
             if l_classifier is not None: # and class_id==XXX #apply classifier for a specific class
                 classifier_meta=pyds.glist_get_nvds_classifier_meta(l_classifier.data)
                 l_label=classifier_meta.label_info_list
                 label_info=pyds.glist_get_nvds_label_info(l_label.data)
                 classifier_class = label_info.result_class_id
-                print("sgie class={0}",classifier_class)
+                print("sgie class={0}".format(classifier_class))
 
             obj_counter[obj_meta.class_id] += 1
         
-            if (frame_n % 30 == 0):
+            if (frame_n % ALPR_FRAME_RATE == 0):
+
+                print("obj_meta: object_id={0}; class_id={1}; classifier_class={2}".format(obj_meta.object_id,obj_meta.class_id,classifier_class))
 
                 # Cv2 stuff
                 if is_first_obj:
@@ -117,7 +124,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                     frame_image=cv2.cvtColor(frame_image,cv2.COLOR_RGBA2BGRA)
             
                 #recognize license plate data
-                recognize_license_plate(frame_image,obj_meta,obj_meta.confidence)
+                recognize_license_plate(frame_image,obj_meta,obj_meta.confidence,frame_n)
             
             try: 
                 l_obj=l_obj.next
@@ -166,44 +173,44 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             break
     return Gst.PadProbeReturn.OK	
 
-def recognize_license_plate(image,obj_meta,confidence):
+def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
+    
+    #Importing openalpr
+    global global_alpr_engine
+    
+    #frame_number = random.randint(0, 100)
+    rect_params=obj_meta.rect_params
+    top=int(rect_params.top)
+    left=int(rect_params.left)
+    width=int(rect_params.width)
+    height=int(rect_params.height)
+    car_cutout = image[top:top+height,left:left+width,:]
+    
+    if (SAVE_IMAGES):
+        cv2.imwrite("/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-test12-helloworld8/"+str(p_frame_n)+'_'+str(obj_meta.object_id)+"_image.jpg",car_cutout)
 
-    #silly way to detect license plates
-    if (True): #obj_meta.class_id == 1):        
-        #Importing openalpr
-        global global_alpr_engine
+    alrp_output = global_alpr_engine.recognize_ndarray(car_cutout)
+
+    if ('results' in alrp_output and len(alrp_output['results'])>0):
+        lp_detection = alrp_output['results'][0]
         
-        #frame_number = random.randint(0, 100)
-        rect_params=obj_meta.rect_params
-        top=int(rect_params.top)
-        left=int(rect_params.left)
-        width=int(rect_params.width)
-        height=int(rect_params.height)
-        lp_cutout = image[top:top+height,left:left+width,:]
+        print('Main candidate:')
+        print('{0}:{1}'.format(lp_detection['plate'],lp_detection['confidence']))
 
-        #cv2.imwrite("/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-test10-helloworld8/"+str(frame_number)+"_image.jpg",image)
-
-        alrp_output = global_alpr_engine.recognize_ndarray(lp_cutout)
-
-        if ('results' in alrp_output and len(alrp_output['results'])>0):
-            lp_detection = alrp_output['results'][0]
-            
-            print('Main candidate:')
-            print('{0}:{1}'.format(lp_detection['plate'],lp_detection['confidence']))
-
-            lp_candidates = lp_detection['candidates']
-            template_match = [x for x in lp_candidates if x['matches_template'] == 1]
-            if (len(template_match)>0):
-                print('Match candidates:')
-                for v_item in template_match[:2]:
+        lp_candidates = lp_detection['candidates']
+        template_match = [x for x in lp_candidates if x['matches_template'] == 1]
+        if (len(template_match)>0):
+            print('Match candidates:')
+            for v_item in template_match[:2]:
+                print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
+        else:
+            template_no_match = [x for x in lp_candidates if (x['matches_template'] == 0 and len(x['plate'])==6)]
+            if (len(template_no_match)>0):
+                print('Unmatch candidates:')
+                for v_item in template_no_match[:2]:
                     print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
-            else:
-                template_no_match = [x for x in lp_candidates if (x['matches_template'] == 0 and len(x['plate'])==6)]
-                if (len(template_no_match)>0):
-                    print('Unmatch candidates:')
-                    for v_item in template_no_match[:2]:
-                        print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
         
+
 def draw_bounding_boxes(image,obj_meta,confidence):
     confidence='{0:.2f}'.format(confidence)
     rect_params=obj_meta.rect_params
@@ -286,7 +293,6 @@ def create_source_bin(index,uri):
         return None
     return nbin
 
-#IK:Main method
 def main(args):
     # Check input arguments
     if len(args) < 2:
