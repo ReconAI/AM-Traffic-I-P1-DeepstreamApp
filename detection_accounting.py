@@ -1,5 +1,39 @@
-
 import numpy as np
+from collections import Counter
+
+def GetTrueLPRecord(p_LP_Array): #['ZLV275','ZLY275','ZLY27S']
+    LP_char_Array = []
+    
+    for v_lp in p_LP_Array:
+        LP_char_Array.append(list(v_lp))
+    
+    LP_char_Array_t = list(map(list, zip(*LP_char_Array)))
+    
+    output_LP = '' ##AAA000
+    
+    for idx,v_char_list in enumerate(LP_char_Array_t):
+        cnt = Counter(v_char_list)
+        
+        most_common_list = cnt.most_common()
+        
+        char_candidate = ''
+        
+        for v_char,_ in most_common_list:
+            if idx<3:
+                if v_char.isalpha():
+                    char_candidate = v_char
+                    break
+            else:
+                if (not v_char.isalpha()):
+                    char_candidate = v_char
+                    break
+            
+        if (char_candidate == ''):
+            char_candidate,_ = most_common_list[0]
+        
+        output_LP += char_candidate
+        
+    return True, output_LP
 
 class LicensePlateRecord():
     def __init__(self, text, matches_template, confidence):
@@ -18,7 +52,9 @@ class DetectionObject():
         self.last_location_x2 = -1
         self.last_location_y2 = -1
         self.LP_measurements = []
+        self.LP_measurement_samples = 0
         self.LP_recognized = False
+        self.LP_record = None
 
     def update_location(self,p_X1, p_Y1, p_X2, p_Y2):
         self.last_location_x1 = p_X1
@@ -27,7 +63,18 @@ class DetectionObject():
         self.last_location_y2 = p_Y2
 
     def update_LP(self,p_measurement):
-        self.LP_measurements.append(p_measurement)
+        if ((not self.LP_recognized) and len(p_measurement)>0):
+            self.LP_measurements = self.LP_measurements + p_measurement
+            self.LP_measurement_samples = self.LP_measurement_samples + 1
+
+            if (self.LP_measurement_samples>=3):
+                
+                v_success, LP_rec = GetTrueLPRecord(self.LP_measurements)
+
+                if (v_success):
+                    self.LP_record = LP_rec
+                    self.LP_recognized = True
+
 
 class DetectionAccountant():
 
@@ -49,7 +96,7 @@ class DetectionAccountant():
         Updates buffer
 
         Params:
-        object detected in this frame - frame_detections(dict): {key_id(=tracker_id): [x1,y1,x2,y2]   #######,[LicensePlateRecords],class,secondary_class]}
+        object detected in this frame - frame_detections(dict): {key_id(=tracker_id): [[x1,y1,x2,y2] ,['ZLV275','ZLY275','ZLY27S'],class,[secondary_class_list]]}
         '''
 
         objs_to_archive = []
@@ -72,7 +119,8 @@ class DetectionAccountant():
 
         for detection in frame_detections:
             self.objects_buffers[detection] = DetectionObject(detection, 0, 0)
-        
+            self.update_present_object(detection, frame_detections)
+
         for obj_id in objs_to_archive:
             self.archive_buffer.append(self.objects_buffers[obj_id])
             del self.objects_buffers[obj_id]
@@ -91,16 +139,28 @@ class DetectionAccountant():
             # was missing, reset its missing counter
             self.absence_count[obj_id] = 0
 
+        location_array = frame_detections[obj_id][0]
+        
         # update location information
-        self.objects_buffers[obj_id].update_location(frame_detections[obj_id][0],frame_detections[obj_id][1],frame_detections[obj_id][2],frame_detections[obj_id][3])
-        # update location information
-        #self.objects_buffer[obj_id].update_LP(frame_detections[obj_id][1])
+        self.objects_buffers[obj_id].update_location(location_array[0],location_array[1],location_array[2],location_array[3])
+
+        # update license plate information
+        lp_array = frame_detections[obj_id][1]
+        #lp_json = json.loads(frame_detections[obj_id][1])
+        self.objects_buffers[obj_id].update_LP(lp_array)
 
     def print_objects_buffers(self):
         print('Objects buffer:')
         for key in self.objects_buffers:
-            print("{0}:{1}".format(key,self.objects_buffers[key].last_location_x1))
+            v_buffer_object = self.objects_buffers[key]
 
+            lp_data = ''
+            if (v_buffer_object.LP_recognized):
+                lp_data = v_buffer_object.LP_record
+
+            print("{0}:[{1},{2},{3},{4}]:{5}".format(key,v_buffer_object.last_location_x1,v_buffer_object.last_location_y1,v_buffer_object.last_location_x2,v_buffer_object.last_location_y2,lp_data))
+            
+                
 
         
 
