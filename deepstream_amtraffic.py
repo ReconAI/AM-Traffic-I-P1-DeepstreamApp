@@ -245,7 +245,8 @@ def recognize_license_plate2(image,obj_meta,confidence,p_frame_n):
         out_LP_array = []
         lp_detection = alrp_output['results'][0]
         
-        out_LP_array.append(lp_detection['plate'])
+        if (len(lp_detection['plate'])==6):
+            out_LP_array.append(lp_detection['plate'])
 
         lp_candidates = lp_detection['candidates']
         template_match = [x for x in lp_candidates if x['matches_template'] == 1]
