@@ -25,9 +25,9 @@ To run production sample:
 
 ```sh
 cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
-python3 deepstream-amtraffic.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test.mp4
+python3 deepstream_amtraffic.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test.mp4
 or
-python3 deepstream-amtraffic.py rtsp://192.168.100.2:8554
+python3 deepstream_amtraffic.py rtsp://192.168.100.2:8554
 ```
 
 RTSP output can be checked as rtps stream:

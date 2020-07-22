@@ -47,6 +47,7 @@ ALPR_FRAME_RATE = 10
 
 frame_n = 0
 global_alpr_engine=None
+global_detection_accountant=None
 
 #IK:Method to display data on the screen
 def osd_sink_pad_buffer_probe(pad,info,u_data):
@@ -89,6 +90,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         l_obj=frame_meta.obj_meta_list
         is_first_obj = True
         
+        detected_objects = {}
+
         while l_obj is not None:
             try:
                 # Casting l_obj.data to pyds.NvDsObjectMeta
@@ -109,7 +112,6 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             obj_counter[obj_meta.class_id] += 1
         
             if (frame_n % ALPR_FRAME_RATE == 0):
-
                 print("obj_meta: object_id={0}; class_id={1}; classifier_class={2}".format(obj_meta.object_id,obj_meta.class_id,classifier_class))
 
                 # Cv2 stuff
@@ -124,12 +126,25 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                     frame_image=cv2.cvtColor(frame_image,cv2.COLOR_RGBA2BGRA)
             
                 #recognize license plate data
-                recognize_license_plate(frame_image,obj_meta,obj_meta.confidence,frame_n)
-            
+                detected_objects[obj_meta.object_id] = recognize_license_plate2(frame_image,obj_meta,obj_meta.confidence,frame_n)
+                
+            else:
+                rect_params=obj_meta.rect_params
+                top=int(rect_params.top)
+                left=int(rect_params.left)
+                width=int(rect_params.width)
+                height=int(rect_params.height)
+
+                detected_objects[obj_meta.object_id] = [[top,top+height,left,left+width], [], obj_meta.class_id]
             try: 
                 l_obj=l_obj.next
             except StopIteration:
                 break
+        
+        global global_detection_accountant
+        print('Detected objects:')
+        global_detection_accountant.process_next_frame(detected_objects)
+        global_detection_accountant.print_objects_buffers()
 
         # Acquiring a display meta object. The memory ownership remains in
         # the C code so downstream plugins can still access it. Otherwise
@@ -192,6 +207,7 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
     alrp_output = global_alpr_engine.recognize_ndarray(car_cutout)
 
     if ('results' in alrp_output and len(alrp_output['results'])>0):
+
         lp_detection = alrp_output['results'][0]
         
         print('Main candidate:')
@@ -209,7 +225,43 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
                 print('Unmatch candidates:')
                 for v_item in template_no_match[:2]:
                     print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
+
+def recognize_license_plate2(image,obj_meta,confidence,p_frame_n):
+    
+    #Importing openalpr
+    global global_alpr_engine
+    
+    #frame_number = random.randint(0, 100)
+    rect_params=obj_meta.rect_params
+    top=int(rect_params.top)
+    left=int(rect_params.left)
+    width=int(rect_params.width)
+    height=int(rect_params.height)
+    car_cutout = image[top:top+height,left:left+width,:]
+
+    alrp_output = global_alpr_engine.recognize_ndarray(car_cutout)
+
+    if ('results' in alrp_output and len(alrp_output['results'])>0):
+        out_LP_array = []
+        lp_detection = alrp_output['results'][0]
         
+        out_LP_array.append(lp_detection['plate'])
+
+        lp_candidates = lp_detection['candidates']
+        template_match = [x for x in lp_candidates if x['matches_template'] == 1]
+        if (len(template_match)>0):
+            for v_item in template_match[:2]:
+                out_LP_array.append(v_item['plate'])
+        else:
+            template_no_match = [x for x in lp_candidates if (x['matches_template'] == 0 and len(x['plate'])==6)]
+            if (len(template_no_match)>0):
+                for v_item in template_no_match[:2]:
+                    out_LP_array.append(v_item['plate'])
+
+        return [[top,top+height,left,left+width], out_LP_array, obj_meta.class_id]
+    else:
+        return [[top,top+height,left,left+width], [], -1]
+
 
 def draw_bounding_boxes(image,obj_meta,confidence):
     confidence='{0:.2f}'.format(confidence)
@@ -298,6 +350,10 @@ def main(args):
     if len(args) < 2:
         sys.stderr.write("usage: %s <uri1> [uri2] ... [uriN]\n" % args[0])
         sys.exit(1)
+
+    
+    global global_detection_accountant
+    global_detection_accountant=DetectionAccountant(15)
 
     global global_alpr_engine
     global_alpr_engine = Alpr("eu", "/etc/openalpr/openalpr.conf", "/usr/share/openalpr/runtime_data")
