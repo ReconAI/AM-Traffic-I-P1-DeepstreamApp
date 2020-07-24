@@ -149,6 +149,9 @@ class DetectionAccountant():
         #lp_json = json.loads(frame_detections[obj_id][1])
         self.objects_buffers[obj_id].update_LP(lp_array)
 
+    def get_objects_buffers(self):
+        return list(self.objects_buffers.values())
+
     def print_objects_buffers(self):
         print('Objects buffer:')
         for key in self.objects_buffers:
@@ -160,7 +163,12 @@ class DetectionAccountant():
 
             print("{0}:[{1},{2},{3},{4}]:{5}".format(key,v_buffer_object.last_location_x1,v_buffer_object.last_location_y1,v_buffer_object.last_location_x2,v_buffer_object.last_location_y2,lp_data))
             
-                
+    def get_archive_buffer(self):
+        return self.archive_buffer
+
+    def clear_archive_buffer(self):
+        self.archive_buffer = []
+
 
         
 

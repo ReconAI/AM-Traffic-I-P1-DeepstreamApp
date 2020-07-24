@@ -21,7 +21,7 @@ Put project folder into '/opt/nvidia/deepstream/deepstream-5.0/sources/python/ap
 
 ## How to run
 
-To run production sample:
+To run production sample (rtsp + console output):
 
 ```sh
 cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
@@ -30,9 +30,10 @@ or
 python3 deepstream_amtraffic.py rtsp://192.168.100.2:8554
 ```
 
-RTSP output can be checked as rtps stream:
+To run production sample (rtsp, console output, message queue):
 ```sh
-rtsp://<device-ip-address>:8554/ds-test
-for example
-rtsp://192.168.1.132:8554/ds-test
+cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
+python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test.mp4
+or
+python3 deepstream_amtraffic_msq.py rtsp://192.168.100.2:8554
 ```
