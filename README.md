@@ -33,7 +33,7 @@ python3 deepstream_amtraffic.py rtsp://192.168.100.2:8554
 To run production sample (rtsp, console output, message queue):
 ```sh
 cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
-python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test.mp4
+python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test3.mp4
 or
 python3 deepstream_amtraffic_msq.py rtsp://192.168.100.2:8554
 ```

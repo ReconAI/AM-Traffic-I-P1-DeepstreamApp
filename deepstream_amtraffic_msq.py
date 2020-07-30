@@ -53,6 +53,8 @@ frame_n = 0
 global_alpr_engine=None
 global_detection_accountant=None
 
+UNTRACKED_OBJECT_ID = 0xffffffffffffffff
+
 ## MSQ settings
 MAX_DISPLAY_LEN=64
 MAX_TIME_STAMP_LEN=32
@@ -205,7 +207,8 @@ def generate_event_msg_meta(data, class_id):
         meta.extMsgSize = sys.getsizeof(pyds.NvDsPersonObject)
     return meta
 
-# Frame processing method
+# Frame processing method V1.1
+# LP location processing added
 def osd_sink_pad_buffer_probe(pad,info,u_data):
     frame_number=0
     
@@ -306,8 +309,9 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                             print("Error in attaching event meta to buffer\n")
 
                 #recognize license plate data
-                detected_objects[obj_meta.object_id] = recognize_license_plate(frame_image,obj_meta,obj_meta.confidence,frame_n)
-                
+                detected_obj_arr = recognize_license_plate(frame_image,obj_meta,obj_meta.confidence,frame_n)
+                detected_objects[obj_meta.object_id] = detected_obj_arr
+               
             else:
                 rect_params=obj_meta.rect_params
                 top=int(rect_params.top)
@@ -315,17 +319,70 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 width=int(rect_params.width)
                 height=int(rect_params.height)
 
-                detected_objects[obj_meta.object_id] = [[top,top+height,left,left+width], [], obj_meta.class_id]
+                detected_objects[obj_meta.object_id] = [[top,top+height,left,left+width],[-1,-1,-1,-1], [], obj_meta.class_id]
+
             try: 
                 l_obj=l_obj.next
             except StopIteration:
                 break
         
+        detected_objects_copy = detected_objects.copy()
+        
+
         global global_detection_accountant
         print('Detected objects:')
         global_detection_accountant.process_next_frame(detected_objects)
         global_detection_accountant.print_objects_buffers()
+                
+        #Draw license plate location.
+        
+        lp_objectIds = detected_objects_copy.keys()
 
+        for lp_obj_id in lp_objectIds:
+            lp_detection_object = global_detection_accountant.objects_buffers[lp_obj_id]
+
+            lp_obj_meta = pyds.nvds_acquire_obj_meta_from_pool(batch_meta)
+            
+            if (min([lp_detection_object.last_lp_location_x1,lp_detection_object.last_lp_location_y1, lp_detection_object.last_lp_location_x2 , lp_detection_object.last_lp_location_y2]) != -1):
+                lp_rect_params = lp_obj_meta.rect_params
+                lp_rect_params.top = int(lp_detection_object.last_lp_location_x1 + lp_detection_object.last_location_x1)
+                lp_rect_params.height = int(lp_detection_object.last_lp_location_x2 - lp_detection_object.last_lp_location_x1)
+                lp_rect_params.left = int(lp_detection_object.last_lp_location_y1 + lp_detection_object.last_location_y1)
+                lp_rect_params.width = int(lp_detection_object.last_lp_location_y2 - lp_detection_object.last_lp_location_y1)
+                
+                lp_rect_params.has_bg_color = 1
+                lp_rect_params.bg_color.set(1, 1, 1, 0.1)
+                lp_rect_params.border_width = 3
+                lp_rect_params.border_color.set(1, 0, 0, 1)
+                
+                lp_obj_meta.confidence = 1
+                lp_obj_meta.class_id = 0
+
+                lp_obj_meta.object_id = UNTRACKED_OBJECT_ID
+                """
+                # Set display text for the object.
+                txt_params = lp_obj_meta.text_params
+                if txt_params.display_text:
+                    pyds.free_buffer(txt_params.display_text)
+
+                txt_params.x_offset = int(lp_rect_params.left)
+                txt_params.y_offset = max(0, int(lp_rect_params.top) - 10)
+                txt_params.display_text = (
+                    label_names[lbl_id] + " " + "{:04.3f}".format(1)
+                )
+                # Font , font-color and font-size
+                txt_params.font_params.font_name = "Serif"
+                txt_params.font_params.font_size = 10
+                # set(red, green, blue, alpha); set to White
+                txt_params.font_params.font_color.set(1.0, 1.0, 1.0, 1.0)
+
+                # Text background color
+                txt_params.set_bg_clr = 1
+                # set(red, green, blue, alpha); set to Black
+                txt_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
+                """
+                pyds.nvds_add_obj_meta_to_frame(frame_meta, lp_obj_meta, None)
+            
         # Acquiring a display meta object. The memory ownership remains in
         # the C code so downstream plugins can still access it. Otherwise
         # the garbage collector will claim it when this probe function exits.
@@ -368,7 +425,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             break
     return Gst.PadProbeReturn.OK	
 
-# RECOGNIZE LICENSE PLATES V1.0
+# RECOGNIZE LICENSE PLATES V1.1
+# License Plate anonymization logic added
 def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
     
     #Importing openalpr
@@ -385,6 +443,10 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
     if (SAVE_IMAGES):
         cv2.imwrite("{0}/{1}_{2}_image.jpg".format(APPLICATION_PATH,p_frame_n,obj_meta.object_id),car_cutout)
 
+    lp_top = -1
+    lp_left = -1
+    lp_bottom = -1
+    lp_right = -1
 
     alrp_output = global_alpr_engine.recognize_ndarray(car_cutout)
 
@@ -398,6 +460,21 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
         
         if (len(lp_detection['plate'])==6):
             out_LP_array.append(lp_detection['plate'])
+        
+        if ('coordinates' in lp_detection and len(lp_detection['coordinates'])>0):
+            x_arr = []
+            y_arr = []
+            for pnt in lp_detection['coordinates']:
+                x_arr.append(int(pnt['x']))
+                y_arr.append(int(pnt['y']))
+
+            if (len(x_arr)>0):
+                lp_left = min(x_arr)
+                lp_right = max(x_arr)
+            
+            if (len(y_arr)>0):
+                lp_top = min(y_arr)
+                lp_bottom = max(y_arr)
 
         lp_candidates = lp_detection['candidates']
         template_match = [x for x in lp_candidates if x['matches_template'] == 1]
@@ -423,9 +500,9 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
                     if (PRINT_DEBUG):
                         print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
 
-        return [[top,top+height,left,left+width], out_LP_array, obj_meta.class_id]
+        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], out_LP_array, obj_meta.class_id]
     else:
-        return [[top,top+height,left,left+width], [], -1]
+        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], [], -1]
 
 
 def draw_bounding_boxes(image,obj_meta,confidence):
