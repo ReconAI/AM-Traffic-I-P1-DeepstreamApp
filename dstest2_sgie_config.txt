@@ -69,12 +69,12 @@ int8-calib-file=../../../../samples/models/Secondary_VehicleTypes/cal_trt.bin
 batch-size=16
 # 0=FP32 and 1=INT8 mode
 network-mode=1
-input-object-min-width=64
-input-object-min-height=64
+input-object-min-width=32 #64
+input-object-min-height=32 #64
 model-color-format=1
 process-mode=2
 gpu-id=0
-gie-unique-id=4
+gie-unique-id=2
 operate-on-gie-id=1
 operate-on-class-ids=0
 is-classifier=1

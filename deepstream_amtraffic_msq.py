@@ -29,6 +29,7 @@ import os.path
 from common.FPS import GETFPS
 
 from detection_accounting import *
+from deepstream_config import *
 
 #CONSTANTS and GLOBALs
 APPLICATION_PATH = '/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic'
@@ -41,13 +42,8 @@ fps_streams={}
 TILED_OUTPUT_WIDTH=1920
 TILED_OUTPUT_HEIGHT=1080
 
-PGIE_CLASS_ID_VEHICLE = 0
-PGIE_CLASS_ID_BICYCLE = 1
-PGIE_CLASS_ID_PERSON = 2
-PGIE_CLASS_ID_ROADSIGN = 3
-
 ALPR_FRAME_RATE = 10
-MSQ_FRAME_RATE = 10
+MSQ_FRAME_RATE = 100
 
 frame_n = 0
 global_alpr_engine=None
@@ -229,6 +225,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
     # C address of gst_buffer as input, which is obtained with hash(gst_buffer)
     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
+
     l_frame = batch_meta.frame_meta_list
     while l_frame is not None:
         try:
@@ -260,18 +257,18 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
             #get secondary classifier data
             l_classifier= obj_meta.classifier_meta_list
-            classifier_class = ''
+            sgie_class = -1
             if l_classifier is not None: # and class_id==XXX #apply classifier for a specific class
                 classifier_meta=pyds.glist_get_nvds_classifier_meta(l_classifier.data)
                 l_label=classifier_meta.label_info_list
                 label_info=pyds.glist_get_nvds_label_info(l_label.data)
-                classifier_class = label_info.result_class_id
-                print("sgie class={0}".format(classifier_class))
+                sgie_class = label_info.result_class_id
 
             obj_counter[obj_meta.class_id] += 1
         
             if (frame_n % ALPR_FRAME_RATE == 0):
-                print("obj_meta: object_id={0}; class_id={1}; classifier_class={2}".format(obj_meta.object_id,obj_meta.class_id,classifier_class))
+
+                #print("obj_meta: gie_id={0}; object_id={1}; class_id={2}; classifier_class={3}".format(obj_meta.unique_component_id,obj_meta.object_id,obj_meta.class_id,sgie_class))
 
                 # Cv2 stuff
                 if is_first_obj:
@@ -310,8 +307,9 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
                 #recognize license plate data
                 detected_obj_arr = recognize_license_plate(frame_image,obj_meta,obj_meta.confidence,frame_n)
+                detected_obj_arr.append(obj_meta.class_id)
+                detected_obj_arr.append(sgie_class)
                 detected_objects[obj_meta.object_id] = detected_obj_arr
-               
             else:
                 rect_params=obj_meta.rect_params
                 top=int(rect_params.top)
@@ -319,7 +317,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 width=int(rect_params.width)
                 height=int(rect_params.height)
 
-                detected_objects[obj_meta.object_id] = [[top,top+height,left,left+width],[-1,-1,-1,-1], [], obj_meta.class_id]
+                detected_objects[obj_meta.object_id] = [[top,top+height,left,left+width],[-1,-1,-1,-1], [], obj_meta.class_id, sgie_class]
 
             try: 
                 l_obj=l_obj.next
@@ -330,10 +328,15 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         
 
         global global_detection_accountant
-        print('Detected objects:')
         global_detection_accountant.process_next_frame(detected_objects)
-        global_detection_accountant.print_objects_buffers()
-                
+        
+        #global_detection_accountant.print_objects_buffers()
+
+        if (frame_n % MSQ_FRAME_RATE == 0):
+            global_detection_accountant.print_archve_buffer()
+            global_detection_accountant.calculate_archive_buffer_cluster()
+            global_detection_accountant.clear_archive_buffer()
+        
         #Draw license plate location.
         
         lp_objectIds = detected_objects_copy.keys()
@@ -351,9 +354,9 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 lp_rect_params.width = int(lp_detection_object.last_lp_location_y2 - lp_detection_object.last_lp_location_y1)
                 
                 lp_rect_params.has_bg_color = 1
-                lp_rect_params.bg_color.set(1, 1, 1, 0.1)
-                lp_rect_params.border_width = 3
-                lp_rect_params.border_color.set(1, 0, 0, 1)
+                lp_rect_params.bg_color.set(1, 0, 1, 0.9)
+                lp_rect_params.border_width = 0
+                lp_rect_params.border_color.set(1, 0, 0, 0.9)
                 
                 lp_obj_meta.confidence = 1
                 lp_obj_meta.class_id = 0
@@ -500,10 +503,9 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
                     if (PRINT_DEBUG):
                         print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
 
-        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], out_LP_array, obj_meta.class_id]
+        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], out_LP_array]
     else:
-        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], [], -1]
-
+        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], []]
 
 def draw_bounding_boxes(image,obj_meta,confidence):
     confidence='{0:.2f}'.format(confidence)
