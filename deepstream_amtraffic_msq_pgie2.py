@@ -319,6 +319,16 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
                     detected_objects[obj_meta.object_id] = [[top,top+height,left,left+width],[-1,-1,-1,-1], [], obj_meta.class_id, sgie_class]
 
+            if (obj_meta.unique_component_id == PGIE2_UNIQUE_ID):
+                print('PGIE2 object detected: {0}'.format(obj_meta.class_id))
+                rect_params = obj_meta.rect_params
+                
+                rect_params.has_bg_color = 1
+                rect_params.bg_color.set(1, 0, 1, 0.9)
+                rect_params.border_width = 0
+                rect_params.border_color.set(1, 0, 0, 0.9)
+                #pyds.nvds_add_obj_meta_to_frame(frame_meta, obj_meta, None)
+
             try: 
                 l_obj=l_obj.next
             except StopIteration:
@@ -328,62 +338,12 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         
         global global_detection_accountant
         global_detection_accountant.process_next_frame(detected_objects)
-        
-        #global_detection_accountant.print_objects_buffers()
+        global_detection_accountant.print_objects_buffers()
 
         if (frame_n % MSQ_STATISTICS_FRAME_RATE == 0):
             global_detection_accountant.print_archve_buffer()
             global_detection_accountant.calculate_archive_buffer_cluster()
             global_detection_accountant.clear_archive_buffer()
-        
-        #Draw license plate location.
-        
-        lp_objectIds = detected_objects_copy.keys()
-
-        for lp_obj_id in lp_objectIds:
-            lp_detection_object = global_detection_accountant.objects_buffers[lp_obj_id]
-
-            lp_obj_meta = pyds.nvds_acquire_obj_meta_from_pool(batch_meta)
-            
-            if (min([lp_detection_object.last_lp_location_x1,lp_detection_object.last_lp_location_y1, lp_detection_object.last_lp_location_x2 , lp_detection_object.last_lp_location_y2]) != -1):
-                lp_rect_params = lp_obj_meta.rect_params
-                lp_rect_params.top = int(lp_detection_object.last_lp_location_x1 + lp_detection_object.last_location_x1)
-                lp_rect_params.height = int(lp_detection_object.last_lp_location_x2 - lp_detection_object.last_lp_location_x1)
-                lp_rect_params.left = int(lp_detection_object.last_lp_location_y1 + lp_detection_object.last_location_y1)
-                lp_rect_params.width = int(lp_detection_object.last_lp_location_y2 - lp_detection_object.last_lp_location_y1)
-                
-                lp_rect_params.has_bg_color = 1
-                lp_rect_params.bg_color.set(1, 0, 1, 0.9)
-                lp_rect_params.border_width = 0
-                lp_rect_params.border_color.set(1, 0, 0, 0.9)
-                
-                lp_obj_meta.confidence = 1
-                lp_obj_meta.class_id = 0
-
-                lp_obj_meta.object_id = UNTRACKED_OBJECT_ID
-                """
-                # Set display text for the object.
-                txt_params = lp_obj_meta.text_params
-                if txt_params.display_text:
-                    pyds.free_buffer(txt_params.display_text)
-
-                txt_params.x_offset = int(lp_rect_params.left)
-                txt_params.y_offset = max(0, int(lp_rect_params.top) - 10)
-                txt_params.display_text = (
-                    label_names[lbl_id] + " " + "{:04.3f}".format(1)
-                )
-                # Font , font-color and font-size
-                txt_params.font_params.font_name = "Serif"
-                txt_params.font_params.font_size = 10
-                # set(red, green, blue, alpha); set to White
-                txt_params.font_params.font_color.set(1.0, 1.0, 1.0, 1.0)
-
-                # Text background color
-                txt_params.set_bg_clr = 1
-                # set(red, green, blue, alpha); set to Black
-                txt_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
-                """
-                pyds.nvds_add_obj_meta_to_frame(frame_meta, lp_obj_meta, None)
             
         # Acquiring a display meta object. The memory ownership remains in
         # the C code so downstream plugins can still access it. Otherwise
@@ -671,6 +631,11 @@ def main(args):
     if not sgie:
         sys.stderr.write(" Unable to make sgie \n")
 
+    #Secondary primary detector
+    pgie2 = Gst.ElementFactory.make("nvinfer", "primary-inference-2")
+    if not pgie2:
+        sys.stderr.write(" Unable to create pgie2 \n")
+
     tiler=Gst.ElementFactory.make("nvmultistreamtiler", "nvtiler")
     if not tiler:
         sys.stderr.write(" Unable to create tiler \n")
@@ -763,6 +728,7 @@ def main(args):
     #Set properties of pgie and sgie
     pgie1.set_property('config-file-path', "dstest2_pgie1_config.txt")
     sgie.set_property('config-file-path', "dstest2_sgie_config.txt")
+    pgie2.set_property('config-file-path', "dstest2_pgie2_config.txt")
 
     tiler.set_property("rows",1)
     tiler.set_property("columns",1)
@@ -811,6 +777,7 @@ def main(args):
     pipeline.add(pgie1)
     pipeline.add(tracker)
     pipeline.add(sgie)
+    pipeline.add(pgie2)
     pipeline.add(tiler)
     pipeline.add(nvvidconv)
     pipeline.add(nvosd)
@@ -839,7 +806,8 @@ def main(args):
     streammux.link(pgie1)
     pgie1.link(tracker)
     tracker.link(sgie)
-    sgie.link(tiler)
+    sgie.link(pgie2)
+    pgie2.link(tiler)
     tiler.link(nvvidconv)
     nvvidconv.link(nvosd)
     nvosd.link(tee) #pipeline separation linkage pt.1

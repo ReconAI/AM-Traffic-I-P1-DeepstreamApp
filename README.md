@@ -39,3 +39,9 @@ python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0
 or
 python3 deepstream_amtraffic_msq.py rtsp://192.168.100.2:8554
 ```
+
+Production sample with better lp anonymization
+```sh
+cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
+python3 deepstream_amtraffic_msq_pgie2.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test3.mp4
+```

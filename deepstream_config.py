@@ -40,3 +40,7 @@ SGIE_LABELS_DICT = {
     4: 'Truck',
     5: 'Van',
 }
+
+
+#Object detector (FaceLicensePlates) classes
+PGIE2_UNIQUE_ID = 3
