@@ -42,9 +42,6 @@ fps_streams={}
 TILED_OUTPUT_WIDTH=1920
 TILED_OUTPUT_HEIGHT=1080
 
-ALPR_FRAME_RATE = 10
-MSQ_FRAME_RATE = 100
-
 frame_n = 0
 global_alpr_engine=None
 global_detection_accountant=None
@@ -332,7 +329,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         
         #global_detection_accountant.print_objects_buffers()
 
-        if (frame_n % MSQ_FRAME_RATE == 0):
+        if (frame_n % MSQ_STATISTICS_FRAME_RATE == 0):
             global_detection_accountant.print_archve_buffer()
             global_detection_accountant.calculate_archive_buffer_cluster()
             global_detection_accountant.clear_archive_buffer()

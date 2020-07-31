@@ -52,6 +52,9 @@ class LicensePlateRecord():
 class DetectionObject():
 
     def __init__(self, key_id, pgie_id, sgie_id):
+
+        self.age = 0
+
         self.key_id = key_id
 
         self.pgie_id = pgie_id
@@ -88,6 +91,8 @@ class DetectionObject():
             
     #Top, bottom, left, right
     def update_location(self,p_X1, p_X2, p_Y1, p_Y2):
+        self.age += 1
+
         self.last_location_x1 = p_X1
         self.last_location_y1 = p_Y1
         self.last_location_x2 = p_X2
@@ -162,7 +167,10 @@ class DetectionAccountant():
             self.update_present_object(v_detection, frame_detections)
 
         for obj_id in objs_to_archive:
-            self.archive_buffer.append(self.objects_buffers[obj_id])
+
+            #if object has big enough lifetime (age)
+            if (self.objects_buffers[obj_id].age >= MIN_DETECTION_AGE):
+                self.archive_buffer.append(self.objects_buffers[obj_id])
             del self.objects_buffers[obj_id]
         
     def update_missing_object(self, obj_id, objs_to_archive):
@@ -196,7 +204,6 @@ class DetectionAccountant():
 
         # update license plate location information
         self.objects_buffers[obj_id].update_lp_location(lp_location_array[0],lp_location_array[1],lp_location_array[2],lp_location_array[3])
-        
         
         #lp_json = json.loads(frame_detections[obj_id][2])
         self.objects_buffers[obj_id].update_LP(lp_array)
@@ -260,15 +267,19 @@ class DetectionAccountant():
         statistics_dict = {}
 
         for label, obj_type in zip(labels, obj_types):
+            if (label == -1):
+                label = 'UNK'
+
             key_val = 'direction{0}-{1}'.format(label,obj_type)
             if key_val in statistics_dict:
                 statistics_dict[key_val] += 1
             else:
-                statistics_dict[key_val] = 0
+                statistics_dict[key_val] = 1
 
         n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
         print('Number of clusters: %d' % n_clusters_)
-        print('Number of objects: %d' % len(labels))
+        print('Number of objects: %d' % len(points))
+        
         print('Statistics Dict:{0}'.format(statistics_dict))
 
         v_dt_now = datetime.datetime.now()
