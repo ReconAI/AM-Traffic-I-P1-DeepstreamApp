@@ -1,11 +1,17 @@
 
-
-
+#Number of frames to run License Plate detection and recognition algorithms
 ALPR_FRAME_RATE = 10
+#Number of frames to send messages
 MSQ_FRAME_RATE = 100
-MSQ_STATISTICS_FRAME_RATE = 1000
-
+#Minimum age of an object to consider it a proper detection
 MIN_DETECTION_AGE = 5
+#Minimal number of LP samples to run license plate recognition
+MIN_NUMBER_OF_LP_SAMPLES = 3
+
+#Grouping algorithm settings
+DBSCAN_EPSILON = 0.5
+DBSCAN_SAMPLES = 10
+
 
 #Object detector (TrafficCamNet) classes
 PGIE1_UNIQUE_ID = 1
@@ -40,7 +46,6 @@ SGIE_LABELS_DICT = {
     4: 'Truck',
     5: 'Van',
 }
-
 
 #Object detector (FaceLicensePlates) classes
 PGIE2_UNIQUE_ID = 3

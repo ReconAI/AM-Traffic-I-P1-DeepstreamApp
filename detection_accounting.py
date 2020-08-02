@@ -6,7 +6,6 @@ from sklearn.preprocessing import StandardScaler
 
 from collections import Counter
 
-
 from deepstream_config import *
 
 def GetTrueLPRecord(p_LP_Array): #['ZLV275','ZLY275','ZLY27S']
@@ -71,6 +70,22 @@ class LicensePlateRecord():
         self.matches_template = matches_template
         self.confidence = confidence
 
+class TrafficStats():
+
+    def __init__(self, start_dt, end_dt, statistics_dict, objects_num, clusters_num):
+        self.start_dt = start_dt
+        self.end_dt = end_dt
+        self.StatisticsDict = statistics_dict
+        self.ObjNum = objects_num
+        self.ClustNum = clusters_num
+
+    def printStats(self):
+        print('Traffic Stats:')
+        print('Timeframe between: {0} and {1}'.format(self.start_dt,self.end_dt))
+        print('Number of clusters: %d' % self.ClustNum)
+        print('Number of objects: %d' % self.ObjNum)
+        print('Statistics Dict:{0}'.format(self.StatisticsDict))
+
 class DetectionObject():
 
     def __init__(self, key_id, pgie_id, sgie_id):
@@ -132,7 +147,7 @@ class DetectionObject():
             self.LP_measurements = self.LP_measurements + p_measurement
             self.LP_measurement_samples = self.LP_measurement_samples + 1
 
-            if (self.LP_measurement_samples>=3):
+            if (self.LP_measurement_samples>=MIN_NUMBER_OF_LP_SAMPLES):
                 
                 v_success, LP_rec = GetTrueLPRecord(self.LP_measurements)
 
@@ -282,7 +297,7 @@ class DetectionAccountant():
                 obj_types.append(PGIE1_LABELS_DICT[v_archive_item.pgie_id])
 
         points = StandardScaler().fit_transform(points)
-        db = DBSCAN(eps=0.5, min_samples=10).fit(points)
+        db = DBSCAN(eps=DBSCAN_EPSILON, min_samples=DBSCAN_SAMPLES).fit(points)
         
         labels = db.labels_
         
@@ -299,15 +314,12 @@ class DetectionAccountant():
                 statistics_dict[key_val] = 1
 
         n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-        print('Number of clusters: %d' % n_clusters_)
-        print('Number of objects: %d' % len(points))
-        
-        print('Statistics Dict:{0}'.format(statistics_dict))
-
         v_dt_now = datetime.datetime.now()
-        print('Timeframe between: {0} and {1}'.format(self.archive_update_df,v_dt_now))
+        arch_upd_dt = self.archive_update_df
         self.archive_update_df = v_dt_now
-
+        
+        return TrafficStats(arch_upd_dt,v_dt_now,statistics_dict,len(points),n_clusters_)
+        
     def clear_archive_buffer(self):
         self.archive_buffer = []
 

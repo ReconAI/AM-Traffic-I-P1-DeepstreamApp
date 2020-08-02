@@ -60,6 +60,46 @@ no_display = True
 MSCONV_CONFIG_FILE="dstest4_msgconv_config.txt"
 schema_type = 0
 
+def prepare_statistics_message(p_trafficStatistics, p_frameNum, p_batch_meta, p_frame_meta):
+    msg_meta=pyds.alloc_nvds_event_msg_meta()
+    msg_meta.frameId = p_frameNum
+    msg_meta = generate_trafficstatistics_msg_meta(msg_meta, p_trafficStatistics)
+    user_event_meta = pyds.nvds_acquire_user_meta_from_pool(p_batch_meta)
+    if(user_event_meta):
+        user_event_meta.user_meta_data = msg_meta;
+        user_event_meta.base_meta.meta_type = pyds.NvDsMetaType.NVDS_EVENT_MSG_META
+        pyds.set_user_copyfunc(user_event_meta, meta_copy_func) #2nd arg - custom function
+        pyds.set_user_releasefunc(user_event_meta, meta_free_func) #2nd arg - custom function
+        pyds.nvds_add_user_meta_to_frame(p_frame_meta, user_event_meta)
+        print("Message attached")
+    else:
+        print("Error in attaching event meta to buffer\n")
+
+def prepare_object_message(p_object, p_frameNum, p_batch_meta, p_frame_meta):
+    msg_meta=pyds.alloc_nvds_event_msg_meta()
+    msg_meta.bbox.top =  p_object.last_lp_location_x1
+    msg_meta.bbox.left =  p_object.last_lp_location_y1
+    msg_meta.bbox.width = int(p_object.last_lp_location_y2 - p_object.last_lp_location_y1)
+    msg_meta.bbox.height = int(p_object.last_lp_location_x2 - p_object.last_lp_location_x1)
+    msg_meta.frameId = p_frameNum
+    msg_meta.trackingId = long_to_int(p_object.key_id)
+    #msg_meta.confidence = obj_meta.confidence
+    #Custom method
+    msg_meta = generate_event_msg_meta(msg_meta, p_object)
+    user_event_meta = pyds.nvds_acquire_user_meta_from_pool(p_batch_meta)
+    if(user_event_meta):
+        user_event_meta.user_meta_data = msg_meta;
+        user_event_meta.base_meta.meta_type = pyds.NvDsMetaType.NVDS_EVENT_MSG_META
+        # Setting callbacks in the event msg meta. The bindings layer
+        # will wrap these callables in C functions. Currently only one
+        # set of callbacks is supported.
+        pyds.set_user_copyfunc(user_event_meta, meta_copy_func) #2nd arg - custom function
+        pyds.set_user_releasefunc(user_event_meta, meta_free_func) #2nd arg - custom function
+        pyds.nvds_add_user_meta_to_frame(p_frame_meta, user_event_meta)
+        print("Message attached")
+    else:
+        print("Error in attaching event meta to buffer\n")
+
 
 # Callback function for deep-copying an NvDsEventMsgMeta struct
 def meta_copy_func(data,user_data):
@@ -150,26 +190,63 @@ def meta_free_func(data,user_data):
         pyds.free_gbuffer(srcmeta.extMsg);
         srcmeta.extMsgSize = 0;
 
-def generate_vehicle_meta(data):
+def generate_vehicle_meta(data,p_object):
     obj = pyds.NvDsVehicleObject.cast(data);
-    obj.type ="sedan"
-    obj.color="blue"
-    obj.make ="Bugatti"
-    obj.model = "M"
-    obj.license ="XX1234"
-    obj.region ="CA"
+    obj.type = ""
+    if (p_object.sgie_id_recognized):
+        obj.type =SGIE_LABELS_DICT[p_object.sgie_id]
+    else:
+        obj.type =PGIE1_LABELS_DICT[p_object.pgie_id]
+    obj.color=""
+    obj.make =""
+    obj.model = ""
+    obj.license = ""
+    if (p_object.LP_recognized):
+        obj.license =p_object.LP_record
+    obj.region ="FI"
     return obj
 
-def generate_person_meta(data):
+def generate_person_meta(data,p_object):
     obj = pyds.NvDsPersonObject.cast(data)
-    obj.age = 45
-    obj.cap = "none"
-    obj.hair = "black"
-    obj.gender = "male"
-    obj.apparel= "formal"
+    obj.age = 0
+    obj.cap = ""
+    obj.hair = ""
+    obj.gender = ""
+    obj.apparel= ""
     return obj
 
-def generate_event_msg_meta(data, class_id):
+def generate_statistics_meta(data,p_trafficStatistics):
+    obj = pyds.NvDsVehicleObject.cast(data);
+    obj.type = "Traffic Statistics"
+    v_statsStr = ""
+    for v_key in p_trafficStatistics.StatisticsDict:
+        v_statsStr += ";{0}:{1}".format(v_key, p_trafficStatistics.StatisticsDict[v_key])
+    obj.color= v_statsStr
+    obj.make = str(p_trafficStatistics.ObjNum)
+    obj.model = str(p_trafficStatistics.ClustNum)
+    obj.license = str(p_trafficStatistics.start_dt)
+    obj.region = str(p_trafficStatistics.end_dt)
+    return obj
+
+
+def generate_trafficstatistics_msg_meta(data, p_trafficStatistics):
+    meta =pyds.NvDsEventMsgMeta.cast(data)
+    meta.sensorId = 0
+    meta.placeId = 0
+    meta.moduleId = 1
+    meta.sensorStr = "sensor-0"
+    meta.ts = pyds.alloc_buffer(MAX_TIME_STAMP_LEN + 1)
+    pyds.generate_ts_rfc3339(meta.ts, MAX_TIME_STAMP_LEN)
+    meta.objClassId = PGIE_CLASS_ID_VEHICLE ##???
+    meta.type = pyds.NvDsEventType.NVDS_EVENT_STOPPED
+    obj = pyds.alloc_nvds_vehicle_object()
+    obj = generate_statistics_meta(obj,p_trafficStatistics)
+    meta.extMsg = obj
+    meta.extMsgSize = sys.getsizeof(pyds.NvDsVehicleObject);
+    return meta
+
+
+def generate_event_msg_meta(data, p_object):
     meta =pyds.NvDsEventMsgMeta.cast(data)
     meta.sensorId = 0
     meta.placeId = 0
@@ -182,20 +259,22 @@ def generate_event_msg_meta(data, class_id):
     # Any custom object as per requirement can be generated and attached
     # like NvDsVehicleObject / NvDsPersonObject. Then that object should
     # be handled in payload generator library (nvmsgconv.cpp) accordingly.
-    if(class_id==PGIE_CLASS_ID_VEHICLE):
-        meta.type = pyds.NvDsEventType.NVDS_EVENT_MOVING
+    if(p_object.pgie_id==PGIE_CLASS_ID_VEHICLE):
+        meta.type = pyds.NvDsEventType.NVDS_EVENT_EXIT
         meta.objType = pyds.NvDsObjectType.NVDS_OBJECT_TYPE_VEHICLE
         meta.objClassId = PGIE_CLASS_ID_VEHICLE
         obj = pyds.alloc_nvds_vehicle_object()
-        obj = generate_vehicle_meta(obj)
+        #custom method to genereate vehicle metadata
+        obj = generate_vehicle_meta(obj,p_object)
         meta.extMsg = obj
         meta.extMsgSize = sys.getsizeof(pyds.NvDsVehicleObject);
-    if(class_id == PGIE_CLASS_ID_PERSON):
-        meta.type =pyds.NvDsEventType.NVDS_EVENT_ENTRY
+    if(p_object.pgie_id == PGIE_CLASS_ID_PERSON):
+        meta.type =pyds.NvDsEventType.NVDS_EVENT_EXIT
         meta.objType = pyds.NvDsObjectType.NVDS_OBJECT_TYPE_PERSON;
         meta.objClassId = PGIE_CLASS_ID_PERSON
         obj = pyds.alloc_nvds_person_object()
-        obj=generate_person_meta(obj)
+        #custom method to genereate person metadata
+        obj=generate_person_meta(obj,p_object)
         meta.extMsg = obj
         meta.extMsgSize = sys.getsizeof(pyds.NvDsPersonObject)
     return meta
@@ -281,30 +360,6 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                         #covert the array into cv2 default color format
                         frame_image=cv2.cvtColor(frame_image,cv2.COLOR_RGBA2BGRA)
 
-                        if (frame_n % MSQ_FRAME_RATE == 0):
-                            msg_meta=pyds.alloc_nvds_event_msg_meta()
-                            msg_meta.bbox.top =  obj_meta.rect_params.top
-                            msg_meta.bbox.left =  obj_meta.rect_params.left
-                            msg_meta.bbox.width = obj_meta.rect_params.width
-                            msg_meta.bbox.height = obj_meta.rect_params.height
-                            msg_meta.frameId = frame_number
-                            msg_meta.trackingId = long_to_int(obj_meta.object_id)
-                            msg_meta.confidence = obj_meta.confidence
-                            msg_meta = generate_event_msg_meta(msg_meta, obj_meta.class_id)
-                            user_event_meta = pyds.nvds_acquire_user_meta_from_pool(batch_meta)
-                            if(user_event_meta):
-                                user_event_meta.user_meta_data = msg_meta;
-                                user_event_meta.base_meta.meta_type = pyds.NvDsMetaType.NVDS_EVENT_MSG_META
-                                # Setting callbacks in the event msg meta. The bindings layer
-                                # will wrap these callables in C functions. Currently only one
-                                # set of callbacks is supported.
-                                pyds.set_user_copyfunc(user_event_meta, meta_copy_func)
-                                pyds.set_user_releasefunc(user_event_meta, meta_free_func)
-                                pyds.nvds_add_user_meta_to_frame(frame_meta, user_event_meta)
-                                print("Message attached")
-                            else:
-                                print("Error in attaching event meta to buffer\n")
-
                     #recognize license plate data
                     detected_obj_arr = recognize_license_plate(frame_image,obj_meta,obj_meta.confidence,frame_n)
                     detected_obj_arr.append(obj_meta.class_id)
@@ -330,13 +385,21 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         global_detection_accountant.process_next_frame(detected_objects)
         global_detection_accountant.print_objects_buffers()
 
-        if (frame_n % MSQ_STATISTICS_FRAME_RATE == 0):
-            global_detection_accountant.print_archve_buffer()
-            global_detection_accountant.calculate_archive_buffer_cluster()
-            global_detection_accountant.clear_archive_buffer()
-        
+        if (frame_n % MSQ_FRAME_RATE == 0):
+            if (len(global_detection_accountant.archive_buffer) > 0)
+                global_detection_accountant.print_archve_buffer()
+                v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
+                v_trafficStats.printStats()
+                
+                print('Sending messages on frame #{0}'.format(frame_n))
+                for v_archiveItem in global_detection_accountant.archive_buffer:
+                    prepare_object_message(v_archiveItem, frame_n, batch_meta, frame_meta)
+                    print('Message for an object #{0} has been prepared'.format(v_archiveItem.key_id))
+                prepare_statistics_message(v_trafficStats, frame_n, batch_meta, frame_meta)
+                print('Stats message was sent')
+                global_detection_accountant.clear_archive_buffer()
+            
         #Draw license plate location.
-        
         lp_objectIds = detected_objects_copy.keys()
 
         for lp_obj_id in lp_objectIds:
