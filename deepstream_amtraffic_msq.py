@@ -386,7 +386,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         global_detection_accountant.print_objects_buffers()
 
         if (frame_n % MSQ_FRAME_RATE == 0):
-            if (len(global_detection_accountant.archive_buffer) > 0)
+            if (len(global_detection_accountant.archive_buffer) > 0):
                 global_detection_accountant.print_archve_buffer()
                 v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
                 v_trafficStats.printStats()
