@@ -328,8 +328,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         
         global global_detection_accountant
         global_detection_accountant.process_next_frame(detected_objects)
-        
-        #global_detection_accountant.print_objects_buffers()
+        global_detection_accountant.print_objects_buffers()
 
         if (frame_n % MSQ_STATISTICS_FRAME_RATE == 0):
             global_detection_accountant.print_archve_buffer()

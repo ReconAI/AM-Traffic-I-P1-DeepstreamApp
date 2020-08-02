@@ -31,9 +31,31 @@ def GetTrueLPRecord(p_LP_Array): #['ZLV275','ZLY275','ZLY27S']
                 if v_char.isalpha():
                     char_candidate = v_char
                     break
+                else: #is numeric
+                    if (v_char == '1'):
+                        char_candidate = 'I'
+                    elif (v_char == '5'):
+                        char_candidate = 'S'
+                    elif (v_char == '0'):
+                        char_candidate = 'O'
+                    else:
+                         char_candidate = ''
+                    break
             else:
                 if (not v_char.isalpha()):
                     char_candidate = v_char
+                    break
+                else: #is alpha
+                    if (v_char == 'I'):
+                        char_candidate = '1'
+                    elif (v_char == 'S'):
+                        char_candidate = '5'
+                    elif (v_char == 'O'):
+                        char_candidate = '0'
+                    elif (v_char == 'D'):
+                        char_candidate = '0'
+                    else:
+                         char_candidate = ''
                     break
             
         if (char_candidate == ''):
