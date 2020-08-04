@@ -148,12 +148,15 @@ class DetectionObject():
             self.LP_measurement_samples = self.LP_measurement_samples + 1
 
             if (self.LP_measurement_samples>=MIN_NUMBER_OF_LP_SAMPLES):
-                
-                v_success, LP_rec = GetTrueLPRecord(self.LP_measurements)
+                self.getLPInfo()
 
-                if (v_success):
-                    self.LP_record = LP_rec
-                    self.LP_recognized = True
+    def getLPInfo(self):
+        v_success, LP_rec = GetTrueLPRecord(self.LP_measurements)
+
+        if (v_success):
+            self.LP_record = LP_rec
+            self.LP_recognized = True
+
 
 
 class DetectionAccountant():
@@ -207,6 +210,8 @@ class DetectionAccountant():
 
             #if object has big enough lifetime (age)
             if (self.objects_buffers[obj_id].age >= MIN_DETECTION_AGE):
+                if ((not self.objects_buffers[obj_id].LP_recognized) and self.objects_buffers[obj_id].LP_measurement_samples>0):
+                    self.objects_buffers[obj_id].getLPInfo()
                 self.archive_buffer.append(self.objects_buffers[obj_id])
             del self.objects_buffers[obj_id]
         

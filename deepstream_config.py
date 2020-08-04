@@ -1,12 +1,12 @@
 
 #Number of frames to run License Plate detection and recognition algorithms
-ALPR_FRAME_RATE = 10
+ALPR_FRAME_RATE = 5
 #Number of frames to send messages
-MSQ_FRAME_RATE = 100
+MSQ_FRAME_RATE = 3600
 #Minimum age of an object to consider it a proper detection
-MIN_DETECTION_AGE = 5
+MIN_DETECTION_AGE = 15 #15 frames = 1 second
 #Minimal number of LP samples to run license plate recognition
-MIN_NUMBER_OF_LP_SAMPLES = 3
+MIN_NUMBER_OF_LP_SAMPLES = 6
 
 #Grouping algorithm settings
 DBSCAN_EPSILON = 0.5

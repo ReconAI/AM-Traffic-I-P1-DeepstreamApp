@@ -315,7 +315,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             break
 
         frame_number=frame_meta.frame_num
-        print("===")
+        #print("===")
         global frame_n
         frame_n = frame_n + 1
         num_rects = frame_meta.num_obj_meta
@@ -383,7 +383,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         
         global global_detection_accountant
         global_detection_accountant.process_next_frame(detected_objects)
-        global_detection_accountant.print_objects_buffers()
+        #global_detection_accountant.print_objects_buffers()
 
         if (frame_n % MSQ_FRAME_RATE == 0):
             if (len(global_detection_accountant.archive_buffer) > 0):
@@ -397,6 +397,11 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                     print('Message for an object #{0} has been prepared'.format(v_archiveItem.key_id))
                 prepare_statistics_message(v_trafficStats, frame_n, batch_meta, frame_meta)
                 print('Stats message was sent')
+
+                print('Detected license plates:')
+                for v_archiveItem in global_detection_accountant.archive_buffer:
+                    if v_archiveItem.LP_recognized:
+                        print('LP:{0}'.format(v_archiveItem.LP_record))
                 global_detection_accountant.clear_archive_buffer()
             
         #Draw license plate location.
@@ -477,7 +482,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
 
         # Using pyds.get_string() to get display_text as string
-        print(pyds.get_string(py_nvosd_text_params.display_text))
+        # print 'Frame Number={} Number of Objects={}'
+        #print(pyds.get_string(py_nvosd_text_params.display_text))
 
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
 
