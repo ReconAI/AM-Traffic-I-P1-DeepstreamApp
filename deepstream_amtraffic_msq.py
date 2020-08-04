@@ -665,7 +665,7 @@ def main(args):
 
     
     global global_detection_accountant
-    global_detection_accountant=DetectionAccountant(15)
+    global_detection_accountant=DetectionAccountant(ABSENSE_INTERVAL)
 
     global global_alpr_engine
     global_alpr_engine = Alpr("eu", "/etc/openalpr/openalpr.conf", "/usr/share/openalpr/runtime_data")

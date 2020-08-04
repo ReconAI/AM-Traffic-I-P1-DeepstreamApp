@@ -5,6 +5,8 @@ ALPR_FRAME_RATE = 5
 MSQ_FRAME_RATE = 3600
 #Minimum age of an object to consider it a proper detection
 MIN_DETECTION_AGE = 15 #15 frames = 1 second
+#For how long object can be considered missing
+ABSENSE_INTERVAL = 15
 #Minimal number of LP samples to run license plate recognition
 MIN_NUMBER_OF_LP_SAMPLES = 6
 
