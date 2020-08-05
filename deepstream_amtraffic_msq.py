@@ -944,7 +944,7 @@ def main(args):
     bus.connect ("message", bus_call, loop)
     
     # Start streaming
-    rtsp_port_num = 8554
+    rtsp_port_num = 8555
     
     server = GstRtspServer.RTSPServer.new()
     server.props.service = "%d" % rtsp_port_num
