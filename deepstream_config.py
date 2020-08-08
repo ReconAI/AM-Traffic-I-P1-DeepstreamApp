@@ -1,3 +1,6 @@
+SAVE_IMAGES = False
+SAVE_LICENSE_PLATES_TO_FILE = True
+PRINT_DEBUG = False
 
 #Number of frames to run License Plate detection and recognition algorithms
 ALPR_FRAME_RATE = 5
@@ -10,10 +13,11 @@ ABSENSE_INTERVAL = 15
 #Minimal number of LP samples to run license plate recognition
 MIN_NUMBER_OF_LP_SAMPLES = 6
 
+ALRP_CONFIDENCE_THRESHOLD = 70
+
 #Grouping algorithm settings
 DBSCAN_EPSILON = 0.5
 DBSCAN_SAMPLES = 10
-
 
 #Object detector (TrafficCamNet) classes
 PGIE1_UNIQUE_ID = 1

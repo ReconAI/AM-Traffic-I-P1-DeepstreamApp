@@ -72,12 +72,13 @@ class LicensePlateRecord():
 
 class TrafficStats():
 
-    def __init__(self, start_dt, end_dt, statistics_dict, objects_num, clusters_num):
+    def __init__(self, start_dt, end_dt, statistics_dict, objects_num, clusters_num, clusterCentroids_dict):
         self.start_dt = start_dt
         self.end_dt = end_dt
         self.StatisticsDict = statistics_dict
         self.ObjNum = objects_num
         self.ClustNum = clusters_num
+        self.CentroidsDict = clusterCentroids_dict
 
     def printStats(self):
         print('Traffic Stats:')
@@ -85,6 +86,7 @@ class TrafficStats():
         print('Number of clusters: %d' % self.ClustNum)
         print('Number of objects: %d' % self.ObjNum)
         print('Statistics Dict:{0}'.format(self.StatisticsDict))
+        print('Centroids Dict:{0}'.format(self.CentroidsDict))
 
 class DetectionObject():
 
@@ -307,7 +309,9 @@ class DetectionAccountant():
         labels = db.labels_
         
         statistics_dict = {}
+        clusters_dict = {}
 
+        cnt_i = 0
         for label, obj_type in zip(labels, obj_types):
             if (label == -1):
                 label = 'UNK'
@@ -318,12 +322,27 @@ class DetectionAccountant():
             else:
                 statistics_dict[key_val] = 1
 
+            if label not in clusters_dict:
+                clusters_dict[label] = []
+            
+            clusters_dict[label].append(point[cnt_i])
+
+            cnt_i += 1
+
+        clusterCenters_dict = {}
+        for v_key in clusters_dict:
+            points_arr = clusters_dict[v_key]
+            x = [p[0] for p in points_arr]
+            y = [p[1] for p in points_arr]
+            centroid = (sum(x) / len(points_arr), sum(y) / len(points_arr))
+            clusterCenters_dict[v_key] = centroid
+
         n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
         v_dt_now = datetime.datetime.now()
         arch_upd_dt = self.archive_update_df
         self.archive_update_df = v_dt_now
         
-        return TrafficStats(arch_upd_dt,v_dt_now,statistics_dict,len(points),n_clusters_)
+        return TrafficStats(arch_upd_dt,v_dt_now,statistics_dict,len(points),n_clusters_,clusterCenters_dict)
         
     def clear_archive_buffer(self):
         self.archive_buffer = []

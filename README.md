@@ -63,3 +63,10 @@ python3 deepstream_amtraffic_msq.py rtsp://192.168.100.2:8554
 
 [Instruction](https://docs.google.com/document/d/1hDoDEHMTkMPDQZCvGM-OgKTn2EXkXXvS0UaDlJ75vEw/edit)
 
+## License plate detection single-network application test
+```sh
+cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
+python3 deepstream_lpdetection.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test3.mp4
+```
+
+https://github.com/ReconAI/AMTrafficPhase2-face-licenseplate-detection/tree/master/Detectnet_resnet10

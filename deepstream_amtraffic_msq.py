@@ -24,18 +24,12 @@ import numpy as np
 import cv2
 from openalpr import Alpr
 import os
-import os.path
-
-from common.FPS import GETFPS
 
 from detection_accounting import *
 from deepstream_config import *
 
 #CONSTANTS and GLOBALs
 APPLICATION_PATH = '/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic'
-
-SAVE_IMAGES = False
-PRINT_DEBUG = False
 
 fps_streams={}
 
@@ -332,7 +326,11 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 break
 
             #Filter detections by PGIE1 network and don't include RoadSign class
-            if (obj_meta.unique_component_id == PGIE1_UNIQUE_ID and obj_meta.class_id != PGIE_CLASS_ID_ROADSIGN):
+            if (obj_meta.unique_component_id == PGIE1_UNIQUE_ID 
+                and obj_meta.class_id != PGIE_CLASS_ID_ROADSIGN #Exclude RoadSing
+                and obj_meta.class_id != PGIE_CLASS_ID_BICYCLE #Exclude Bicycle
+                and obj_meta.class_id != PGIE_CLASS_ID_PERSON #Exclude Person
+                ):
 
                 #get secondary classifier data
                 l_classifier= obj_meta.classifier_meta_list
@@ -399,9 +397,16 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 print('Stats message was sent')
 
                 print('Detected license plates:')
+
+                lp_file = open("licensePlatesDetections.txt", "a+")
+
                 for v_archiveItem in global_detection_accountant.archive_buffer:
                     if v_archiveItem.LP_recognized:
                         print('LP:{0}'.format(v_archiveItem.LP_record))
+                        lp_file.write(v_archiveItem.LP_record + os.linesep)
+                
+                lp_file.close()
+
                 global_detection_accountant.clear_archive_buffer()
             
         #Draw license plate location.
@@ -428,7 +433,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 lp_obj_meta.class_id = 0
 
                 lp_obj_meta.object_id = UNTRACKED_OBJECT_ID
-                """
+                
                 # Set display text for the object.
                 txt_params = lp_obj_meta.text_params
                 if txt_params.display_text:
@@ -436,9 +441,11 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
 
                 txt_params.x_offset = int(lp_rect_params.left)
                 txt_params.y_offset = max(0, int(lp_rect_params.top) - 10)
-                txt_params.display_text = (
-                    label_names[lbl_id] + " " + "{:04.3f}".format(1)
-                )
+
+                if (detected_objects_copy[lp_obj_id].LP_recognized):
+                    txt_params.display_text = detected_objects_copy[lp_obj_id].LP_record
+                else:
+                    txt_params.display_text = 'License plate not recognized yet'
                 # Font , font-color and font-size
                 txt_params.font_params.font_name = "Serif"
                 txt_params.font_params.font_size = 10
@@ -449,7 +456,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 txt_params.set_bg_clr = 1
                 # set(red, green, blue, alpha); set to Black
                 txt_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
-                """
+                
                 pyds.nvds_add_obj_meta_to_frame(frame_meta, lp_obj_meta, None)
             
         # Acquiring a display meta object. The memory ownership remains in
@@ -528,7 +535,7 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
             print('Main candidate:')
             print('{0}:{1}'.format(lp_detection['plate'],lp_detection['confidence']))
         
-        if (len(lp_detection['plate'])==6):
+        if (len(lp_detection['plate'])==6 and int(lp_detection['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
             out_LP_array.append(lp_detection['plate'])
         
         if ('coordinates' in lp_detection and len(lp_detection['coordinates'])>0):
@@ -553,10 +560,11 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
                 print('Match candidates:')
 
             for v_item in template_match[:2]:
-                out_LP_array.append(v_item['plate'])
-                
-                if (PRINT_DEBUG):
-                    print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
+                if (int(v_item['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
+                    out_LP_array.append(v_item['plate'])
+
+                    if (PRINT_DEBUG):
+                        print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
 
         else:
             template_no_match = [x for x in lp_candidates if (x['matches_template'] == 0 and len(x['plate'])==6)]
@@ -565,10 +573,11 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
                     print('Unmatch candidates:')
 
                 for v_item in template_no_match[:2]:
-                    out_LP_array.append(v_item['plate'])
+                    if (int(v_item['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
+                        out_LP_array.append(v_item['plate'])
 
-                    if (PRINT_DEBUG):
-                        print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
+                        if (PRINT_DEBUG):
+                            print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
 
         return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], out_LP_array]
     else:
@@ -976,6 +985,14 @@ def main(args):
       loop.run()
     except:
       pass
+
+    print("Pipeline fininshed")
+
+    global global_detection_accountant
+    if (len(global_detection_accountant.archive_buffer) > 0):
+        global_detection_accountant.print_archve_buffer()
+        v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
+        v_trafficStats.printStats()
 
     # cleanup
     pipeline.set_state(Gst.State.NULL)
