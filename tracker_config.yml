@@ -45,4 +45,4 @@ NvDCF:
   trackExponentialSmoothingLr_velocity: 0.05  # Learning rate for new velocity
 
   # Playback options
-  endFrameNum: 200    # stop position
+  # endFrameNum: 200    # stop position

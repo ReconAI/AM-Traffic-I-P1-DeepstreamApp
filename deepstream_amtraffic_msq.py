@@ -51,7 +51,6 @@ conn_str = 'a3qtghj8wcrl9r-ats.iot.eu-west-2.amazonaws.com;443;ds_app'
 cfg_file = '/opt/nvidia/deepstream/deepstream/sources/libs/aws_protocol_adaptor/device_client/cfg_aws.txt'
 topic = None
 no_display = True
-MSCONV_CONFIG_FILE="dstest4_msgconv_config.txt"
 schema_type = 0
 
 def prepare_statistics_message(p_trafficStatistics, p_frameNum, p_batch_meta, p_frame_meta):
@@ -389,23 +388,44 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
                 v_trafficStats.printStats()
                 
-                print('Sending messages on frame #{0}'.format(frame_n))
-                for v_archiveItem in global_detection_accountant.archive_buffer:
-                    prepare_object_message(v_archiveItem, frame_n, batch_meta, frame_meta)
-                    print('Message for an object #{0} has been prepared'.format(v_archiveItem.key_id))
-                prepare_statistics_message(v_trafficStats, frame_n, batch_meta, frame_meta)
-                print('Stats message was sent')
+                if (SAVE_ARCHIVE_TO_FILE):
+                    arch_file = open(ARCHIVE_FILENAME, "a+")
+                    print('Saving archive to file on frame #{0}'.format(frame_n))
+                    for v_archiveItem in global_detection_accountant.archive_buffer:
+                        archItem_string = f"id:{v_archiveItem.key_id};pgie:{v_archiveItem.pgie_id};sgie:{v_archiveItem.sgie_id};age:{v_archiveItem.age};Loc:[{v_archiveItem.last_location_x1};{v_archiveItem.last_location_y1};{v_archiveItem.last_location_x2};{v_archiveItem.last_location_y2}];LP_Loc:[{v_archiveItem.last_lp_location_x1};{v_archiveItem.last_lp_location_y1};{v_archiveItem.last_lp_location_x2};{v_archiveItem.last_lp_location_y2}];LP:{v_archiveItem.LP_record};LP_Rec:{v_archiveItem.LP_recognized};LP_Samp#:{v_archiveItem.LP_measurement_samples};LP_Meas:{v_archiveItem.LP_measurements}"
+                        arch_file.write(archItem_string + os.linesep)
+                    arch_file.close()
+
+                if (SAVE_STATISTICS_TO_FILE):
+                    ts_file = open(STATISTICS_FILENAME, "a+")
+                    print('Saving statistics to file on frame #{0}'.format(frame_n))
+                    ts_file.write('-'*5 + os.linesep)
+                    ts_file.write(f"Timeframe: {v_trafficStats.start_dt} - {v_trafficStats.end_dt}" + os.linesep)
+                    ts_file.write(f"ObjNum: {v_trafficStats.ObjNum}" + os.linesep)
+                    ts_file.write(f"ClustNum: {v_trafficStats.ClustNum}" + os.linesep)
+                    ts_file.write(f"StatsDict: {v_trafficStats.StatisticsDict}" + os.linesep)
+                    ts_file.write(f"CentroidsDict: {v_trafficStats.CentroidsDict}" + os.linesep)
+                    ts_file.close()
+
+                if (SEND_IOT_MESSAGES):
+                    print('Sending messages on frame #{0}'.format(frame_n))
+                    for v_archiveItem in global_detection_accountant.archive_buffer:
+                        prepare_object_message(v_archiveItem, frame_n, batch_meta, frame_meta)
+                        print('Message for an object #{0} has been prepared'.format(v_archiveItem.key_id))
+                    prepare_statistics_message(v_trafficStats, frame_n, batch_meta, frame_meta)
+                    print('Stats message was sent')
 
                 print('Detected license plates:')
-
-                lp_file = open("licensePlatesDetections.txt", "a+")
-
                 for v_archiveItem in global_detection_accountant.archive_buffer:
                     if v_archiveItem.LP_recognized:
                         print('LP:{0}'.format(v_archiveItem.LP_record))
-                        lp_file.write(v_archiveItem.LP_record + os.linesep)
                 
-                lp_file.close()
+                if (SAVE_LICENSE_PLATES_TO_FILE):
+                    lp_file = open(LICENSE_PLATES_FILENAME, "a+")
+                    for v_archiveItem in global_detection_accountant.archive_buffer:
+                        if v_archiveItem.LP_recognized:
+                            lp_file.write(v_archiveItem.LP_record + os.linesep)
+                    lp_file.close()
 
                 global_detection_accountant.clear_archive_buffer()
             
@@ -838,8 +858,9 @@ def main(args):
     
     #IK: set config file for each network
     #Set properties of pgie and sgie
-    pgie1.set_property('config-file-path', "dstest2_pgie1_config.txt")
-    sgie.set_property('config-file-path', "dstest2_sgie_config.txt")
+
+    pgie1.set_property('config-file-path', PGIE_CONFIG_FILE)
+    sgie.set_property('config-file-path', SGIE_CONFIG_FILE)
 
     tiler.set_property("rows",1)
     tiler.set_property("columns",1)
@@ -848,7 +869,7 @@ def main(args):
 
     #Set properties of tracker
     config = configparser.ConfigParser()
-    config.read('dstest2_tracker_config.txt')
+    config.read(TRACKER_CONFIG)
     config.sections()
 
     for key in config['tracker']:

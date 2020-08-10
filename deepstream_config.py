@@ -1,6 +1,18 @@
 SAVE_IMAGES = False
 SAVE_LICENSE_PLATES_TO_FILE = True
+
+LICENSE_PLATES_FILENAME = 'licensePlatesDetections.txt'
+
+SAVE_ARCHIVE_TO_FILE = True
+ARCHIVE_FILENAME = 'archiveDetections.txt'
+
+SAVE_STATISTICS_TO_FILE = True
+STATISTICS_FILENAME = 'statisticsDetections.txt'
+
+SEND_IOT_MESSAGES = False
+
 PRINT_DEBUG = False
+
 
 #Number of frames to run License Plate detection and recognition algorithms
 ALPR_FRAME_RATE = 5
@@ -18,6 +30,15 @@ ALRP_CONFIDENCE_THRESHOLD = 70
 #Grouping algorithm settings
 DBSCAN_EPSILON = 0.5
 DBSCAN_SAMPLES = 10
+
+PGIE_CONFIG_FILE = "dstest2_pgie1_config.txt"
+SGIE_CONFIG_FILE = "dstest2_sgie_config.txt"
+MSCONV_CONFIG_FILE="dstest4_msgconv_config.txt"
+
+TRACKER_KLT_CONFIG = 'tracker_klt_config.txt'
+TRACKER_NVDCF_CONFIG = 'tracker_nvdcf_config.txt'
+TRACKER_IOU_CONFIG = 'tracker_iou_config.txt'
+TRACKER_CONFIG = TRACKER_KLT_CONFIG
 
 #Object detector (TrafficCamNet) classes
 PGIE1_UNIQUE_ID = 1
