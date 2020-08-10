@@ -145,11 +145,11 @@ class DetectionObject():
             self.last_lp_location_y2 = p_Y2
 
     def update_LP(self,p_measurement):
-        if ((not self.LP_recognized) and len(p_measurement)>0):
+        if (len(p_measurement)>0):
             self.LP_measurements = self.LP_measurements + p_measurement
             self.LP_measurement_samples = self.LP_measurement_samples + 1
 
-            if (self.LP_measurement_samples>=MIN_NUMBER_OF_LP_SAMPLES):
+            if (self.LP_measurement_samples % MIN_NUMBER_OF_LP_SAMPLES == 0):
                 self.getLPInfo()
 
     def getLPInfo(self):
@@ -212,7 +212,7 @@ class DetectionAccountant():
 
             #if object has big enough lifetime (age)
             if (self.objects_buffers[obj_id].age >= MIN_DETECTION_AGE):
-                if ((not self.objects_buffers[obj_id].LP_recognized) and self.objects_buffers[obj_id].LP_measurement_samples>0):
+                if (self.objects_buffers[obj_id].LP_measurement_samples>0):
                     self.objects_buffers[obj_id].getLPInfo()
                 self.archive_buffer.append(self.objects_buffers[obj_id])
             del self.objects_buffers[obj_id]
@@ -303,8 +303,8 @@ class DetectionAccountant():
             else:
                 obj_types.append(PGIE1_LABELS_DICT[v_archive_item.pgie_id])
 
-        points = StandardScaler().fit_transform(points)
-        db = DBSCAN(eps=DBSCAN_EPSILON, min_samples=DBSCAN_SAMPLES).fit(points)
+        points_scaled = StandardScaler().fit_transform(points)
+        db = DBSCAN(eps=DBSCAN_EPSILON, min_samples=DBSCAN_SAMPLES).fit(points_scaled)
         
         labels = db.labels_
         
@@ -325,7 +325,7 @@ class DetectionAccountant():
             if label not in clusters_dict:
                 clusters_dict[label] = []
             
-            clusters_dict[label].append(point[cnt_i])
+            clusters_dict[label].append(points[cnt_i])
 
             cnt_i += 1
 
@@ -342,7 +342,7 @@ class DetectionAccountant():
         arch_upd_dt = self.archive_update_df
         self.archive_update_df = v_dt_now
         
-        return TrafficStats(arch_upd_dt,v_dt_now,statistics_dict,len(points),n_clusters_,clusterCenters_dict)
+        return TrafficStats(arch_upd_dt,v_dt_now,statistics_dict,len(points_scaled),n_clusters_,clusterCenters_dict)
         
     def clear_archive_buffer(self):
         self.archive_buffer = []

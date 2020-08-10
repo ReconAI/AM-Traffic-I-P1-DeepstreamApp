@@ -29,7 +29,6 @@ from detection_accounting import *
 from deepstream_config import *
 
 #CONSTANTS and GLOBALs
-APPLICATION_PATH = '/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic'
 
 fps_streams={}
 
@@ -272,6 +271,55 @@ def generate_event_msg_meta(data, p_object):
         meta.extMsgSize = sys.getsizeof(pyds.NvDsPersonObject)
     return meta
 
+def processArchiveBuffer(frame_n, batch_meta, frame_meta, sendMessages = SEND_IOT_MESSAGES):
+    global global_detection_accountant
+    if (len(global_detection_accountant.archive_buffer) > 0):
+        global_detection_accountant.print_archve_buffer()
+        v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
+        v_trafficStats.printStats()
+        
+        if (SAVE_ARCHIVE_TO_FILE):
+            arch_file = open(os.path.join(APPLICATION_PATH,ARCHIVE_FILENAME), "a+")
+            print('Saving archive to file on frame #{0}'.format(frame_n))
+            for v_archiveItem in global_detection_accountant.archive_buffer:
+                archItem_string = f"id:{v_archiveItem.key_id};pgie:{v_archiveItem.pgie_id};sgie:{v_archiveItem.sgie_id};age:{v_archiveItem.age};Loc:[{v_archiveItem.last_location_x1};{v_archiveItem.last_location_y1};{v_archiveItem.last_location_x2};{v_archiveItem.last_location_y2}];LP_Loc:[{v_archiveItem.last_lp_location_x1};{v_archiveItem.last_lp_location_y1};{v_archiveItem.last_lp_location_x2};{v_archiveItem.last_lp_location_y2}];LP:{v_archiveItem.LP_record};LP_Rec:{v_archiveItem.LP_recognized};LP_Samp#:{v_archiveItem.LP_measurement_samples};" #LP_Meas:{v_archiveItem.LP_measurements}"
+                arch_file.write(archItem_string + os.linesep)
+            arch_file.close()
+
+        if (SAVE_STATISTICS_TO_FILE):
+            ts_file = open(os.path.join(APPLICATION_PATH,STATISTICS_FILENAME), "a+")
+            print('Saving statistics to file on frame #{0}'.format(frame_n))
+            ts_file.write('-'*5 + os.linesep)
+            ts_file.write(f"Timeframe: {v_trafficStats.start_dt} - {v_trafficStats.end_dt}" + os.linesep)
+            ts_file.write(f"ObjNum: {v_trafficStats.ObjNum}" + os.linesep)
+            ts_file.write(f"ClustNum: {v_trafficStats.ClustNum}" + os.linesep)
+            ts_file.write(f"StatsDict: {v_trafficStats.StatisticsDict}" + os.linesep)
+            ts_file.write(f"CentroidsDict: {v_trafficStats.CentroidsDict}" + os.linesep)
+            ts_file.close()
+
+        if (sendMessages):
+            print('Sending messages on frame #{0}'.format(frame_n))
+            for v_archiveItem in global_detection_accountant.archive_buffer:
+                prepare_object_message(v_archiveItem, frame_n, batch_meta, frame_meta)
+                print('Message for an object #{0} has been prepared'.format(v_archiveItem.key_id))
+            prepare_statistics_message(v_trafficStats, frame_n, batch_meta, frame_meta)
+            print('Stats message was sent')
+
+        print('Detected license plates:')
+        for v_archiveItem in global_detection_accountant.archive_buffer:
+            if v_archiveItem.LP_recognized:
+                print('LP:{0}'.format(v_archiveItem.LP_record))
+        
+        if (SAVE_LICENSE_PLATES_TO_FILE):
+            lp_file = open(os.path.join(APPLICATION_PATH,LICENSE_PLATES_FILENAME), "a+")
+            for v_archiveItem in global_detection_accountant.archive_buffer:
+                if v_archiveItem.LP_recognized:
+                    lp_file.write(v_archiveItem.LP_record + os.linesep)
+            lp_file.close()
+
+        global_detection_accountant.clear_archive_buffer()
+
+
 # Frame processing method V1.1
 # LP location processing added
 def osd_sink_pad_buffer_probe(pad,info,u_data):
@@ -383,51 +431,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         #global_detection_accountant.print_objects_buffers()
 
         if (frame_n % MSQ_FRAME_RATE == 0):
-            if (len(global_detection_accountant.archive_buffer) > 0):
-                global_detection_accountant.print_archve_buffer()
-                v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
-                v_trafficStats.printStats()
-                
-                if (SAVE_ARCHIVE_TO_FILE):
-                    arch_file = open(ARCHIVE_FILENAME, "a+")
-                    print('Saving archive to file on frame #{0}'.format(frame_n))
-                    for v_archiveItem in global_detection_accountant.archive_buffer:
-                        archItem_string = f"id:{v_archiveItem.key_id};pgie:{v_archiveItem.pgie_id};sgie:{v_archiveItem.sgie_id};age:{v_archiveItem.age};Loc:[{v_archiveItem.last_location_x1};{v_archiveItem.last_location_y1};{v_archiveItem.last_location_x2};{v_archiveItem.last_location_y2}];LP_Loc:[{v_archiveItem.last_lp_location_x1};{v_archiveItem.last_lp_location_y1};{v_archiveItem.last_lp_location_x2};{v_archiveItem.last_lp_location_y2}];LP:{v_archiveItem.LP_record};LP_Rec:{v_archiveItem.LP_recognized};LP_Samp#:{v_archiveItem.LP_measurement_samples};LP_Meas:{v_archiveItem.LP_measurements}"
-                        arch_file.write(archItem_string + os.linesep)
-                    arch_file.close()
-
-                if (SAVE_STATISTICS_TO_FILE):
-                    ts_file = open(STATISTICS_FILENAME, "a+")
-                    print('Saving statistics to file on frame #{0}'.format(frame_n))
-                    ts_file.write('-'*5 + os.linesep)
-                    ts_file.write(f"Timeframe: {v_trafficStats.start_dt} - {v_trafficStats.end_dt}" + os.linesep)
-                    ts_file.write(f"ObjNum: {v_trafficStats.ObjNum}" + os.linesep)
-                    ts_file.write(f"ClustNum: {v_trafficStats.ClustNum}" + os.linesep)
-                    ts_file.write(f"StatsDict: {v_trafficStats.StatisticsDict}" + os.linesep)
-                    ts_file.write(f"CentroidsDict: {v_trafficStats.CentroidsDict}" + os.linesep)
-                    ts_file.close()
-
-                if (SEND_IOT_MESSAGES):
-                    print('Sending messages on frame #{0}'.format(frame_n))
-                    for v_archiveItem in global_detection_accountant.archive_buffer:
-                        prepare_object_message(v_archiveItem, frame_n, batch_meta, frame_meta)
-                        print('Message for an object #{0} has been prepared'.format(v_archiveItem.key_id))
-                    prepare_statistics_message(v_trafficStats, frame_n, batch_meta, frame_meta)
-                    print('Stats message was sent')
-
-                print('Detected license plates:')
-                for v_archiveItem in global_detection_accountant.archive_buffer:
-                    if v_archiveItem.LP_recognized:
-                        print('LP:{0}'.format(v_archiveItem.LP_record))
-                
-                if (SAVE_LICENSE_PLATES_TO_FILE):
-                    lp_file = open(LICENSE_PLATES_FILENAME, "a+")
-                    for v_archiveItem in global_detection_accountant.archive_buffer:
-                        if v_archiveItem.LP_recognized:
-                            lp_file.write(v_archiveItem.LP_record + os.linesep)
-                    lp_file.close()
-
-                global_detection_accountant.clear_archive_buffer()
+            processArchiveBuffer(frame_n, batch_meta, frame_meta)
             
         #Draw license plate location.
         lp_objectIds = detected_objects_copy.keys()
@@ -444,11 +448,16 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 lp_rect_params.left = int(lp_detection_object.last_lp_location_y1 + lp_detection_object.last_location_y1)
                 lp_rect_params.width = int(lp_detection_object.last_lp_location_y2 - lp_detection_object.last_lp_location_y1)
                 
-                lp_rect_params.has_bg_color = 1
-                lp_rect_params.bg_color.set(1, 0, 1, 0.9)
-                lp_rect_params.border_width = 0
-                lp_rect_params.border_color.set(1, 0, 0, 0.9)
-                
+                if (ANONYMIZE_LICENSE_PLATES):
+                    lp_rect_params.has_bg_color = 1
+                    lp_rect_params.bg_color.set(1, 0, 1, 0.9)
+                    lp_rect_params.border_width = 0
+                    lp_rect_params.border_color.set(1, 0, 0, 0.9)
+                else:
+                    lp_rect_params.has_bg_color = 0
+                    lp_rect_params.border_width = 2
+                    lp_rect_params.border_color.set(1, 0, 1, 0.9)
+                    
                 lp_obj_meta.confidence = 1
                 lp_obj_meta.class_id = 0
 
@@ -462,8 +471,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 txt_params.x_offset = int(lp_rect_params.left)
                 txt_params.y_offset = max(0, int(lp_rect_params.top) - 10)
 
-                if (detected_objects_copy[lp_obj_id].LP_recognized):
-                    txt_params.display_text = detected_objects_copy[lp_obj_id].LP_record
+                if (lp_detection_object.LP_recognized):
+                    txt_params.display_text = lp_detection_object.LP_record
                 else:
                     txt_params.display_text = 'License plate not recognized yet'
                 # Font , font-color and font-size
@@ -551,13 +560,6 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
         out_LP_array = []
         lp_detection = alrp_output['results'][0]
 
-        if (PRINT_DEBUG):
-            print('Main candidate:')
-            print('{0}:{1}'.format(lp_detection['plate'],lp_detection['confidence']))
-        
-        if (len(lp_detection['plate'])==6 and int(lp_detection['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
-            out_LP_array.append(lp_detection['plate'])
-        
         if ('coordinates' in lp_detection and len(lp_detection['coordinates'])>0):
             x_arr = []
             y_arr = []
@@ -573,35 +575,44 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
                 lp_top = min(y_arr)
                 lp_bottom = max(y_arr)
 
-        lp_candidates = lp_detection['candidates']
-        template_match = [x for x in lp_candidates if x['matches_template'] == 1]
-        if (len(template_match)>0):
-            if (PRINT_DEBUG):
-                print('Match candidates:')
+            print(f"Recognized license plate obj_id:{obj_meta.object_id} with coordinates {lp_top} vs {height/2}")
+            if (lp_top > height/2): # exclude license plates in upper part of vehicles
 
-            for v_item in template_match[:2]:
-                if (int(v_item['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
-                    out_LP_array.append(v_item['plate'])
-
-                    if (PRINT_DEBUG):
-                        print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
-
-        else:
-            template_no_match = [x for x in lp_candidates if (x['matches_template'] == 0 and len(x['plate'])==6)]
-            if (len(template_no_match)>0):
                 if (PRINT_DEBUG):
-                    print('Unmatch candidates:')
+                    print('Main candidate:')
+                    print('{0}:{1}'.format(lp_detection['plate'],lp_detection['confidence']))
+                
+                if (len(lp_detection['plate'])==6 and int(lp_detection['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
+                    out_LP_array.append(lp_detection['plate'])
+                
+                lp_candidates = lp_detection['candidates']
+                template_match = [x for x in lp_candidates if x['matches_template'] == 1]
+                if (len(template_match)>0):
+                    if (PRINT_DEBUG):
+                        print('Match candidates:')
 
-                for v_item in template_no_match[:2]:
-                    if (int(v_item['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
-                        out_LP_array.append(v_item['plate'])
+                    for v_item in template_match[:2]:
+                        if (int(v_item['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
+                            out_LP_array.append(v_item['plate'])
 
+                            if (PRINT_DEBUG):
+                                print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
+
+                else:
+                    template_no_match = [x for x in lp_candidates if (x['matches_template'] == 0 and len(x['plate'])==6)]
+                    if (len(template_no_match)>0):
                         if (PRINT_DEBUG):
-                            print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
+                            print('Unmatch candidates:')
 
-        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], out_LP_array]
-    else:
-        return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], []]
+                        for v_item in template_no_match[:2]:
+                            if (int(v_item['confidence']) >= ALRP_CONFIDENCE_THRESHOLD):
+                                out_LP_array.append(v_item['plate'])
+
+                                if (PRINT_DEBUG):
+                                    print('{0}:{1}'.format(v_item['plate'],v_item['confidence']))
+
+                return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], out_LP_array]
+    return [[top,top+height,left,left+width],[lp_top,lp_bottom,lp_left,lp_right], []]
 
 def draw_bounding_boxes(image,obj_meta,confidence):
     confidence='{0:.2f}'.format(confidence)
@@ -1008,12 +1019,7 @@ def main(args):
       pass
 
     print("Pipeline fininshed")
-
-    global global_detection_accountant
-    if (len(global_detection_accountant.archive_buffer) > 0):
-        global_detection_accountant.print_archve_buffer()
-        v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
-        v_trafficStats.printStats()
+    processArchiveBuffer(None, None, None, False)
 
     # cleanup
     pipeline.set_state(Gst.State.NULL)

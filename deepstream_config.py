@@ -1,4 +1,9 @@
+APPLICATION_PATH = '/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic'
+
 SAVE_IMAGES = False
+
+ANONYMIZE_LICENSE_PLATES = False
+
 SAVE_LICENSE_PLATES_TO_FILE = True
 
 LICENSE_PLATES_FILENAME = 'file_licensePlatesDetections.txt'
