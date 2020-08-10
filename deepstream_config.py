@@ -1,13 +1,13 @@
 SAVE_IMAGES = False
 SAVE_LICENSE_PLATES_TO_FILE = True
 
-LICENSE_PLATES_FILENAME = 'licensePlatesDetections.txt'
+LICENSE_PLATES_FILENAME = 'file_licensePlatesDetections.txt'
 
 SAVE_ARCHIVE_TO_FILE = True
-ARCHIVE_FILENAME = 'archiveDetections.txt'
+ARCHIVE_FILENAME = 'file_archiveDetections.txt'
 
 SAVE_STATISTICS_TO_FILE = True
-STATISTICS_FILENAME = 'statisticsDetections.txt'
+STATISTICS_FILENAME = 'file_statisticsDetections.txt'
 
 SEND_IOT_MESSAGES = False
 
