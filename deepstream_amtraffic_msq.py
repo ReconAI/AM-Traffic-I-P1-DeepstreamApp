@@ -575,7 +575,7 @@ def recognize_license_plate(image,obj_meta,confidence,p_frame_n):
                 lp_top = min(y_arr)
                 lp_bottom = max(y_arr)
 
-            print(f"Recognized license plate obj_id:{obj_meta.object_id} with coordinates {lp_top} vs {height/2}")
+            #print(f"Recognized license plate obj_id:{obj_meta.object_id} with coordinates {lp_top} vs {height/2}")
             if (lp_top > height/2): # exclude license plates in upper part of vehicles
 
                 if (PRINT_DEBUG):
