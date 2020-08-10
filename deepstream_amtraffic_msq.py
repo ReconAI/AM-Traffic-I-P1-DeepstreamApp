@@ -1019,7 +1019,9 @@ def main(args):
       pass
 
     print("Pipeline fininshed")
-    processArchiveBuffer(None, None, None, False)
+    print("Object Buffer Archived")
+    global_detection_accountant.archive_all_object_buffer()
+    processArchiveBuffer(0, None, None, False)
 
     # cleanup
     pipeline.set_state(Gst.State.NULL)

@@ -159,8 +159,6 @@ class DetectionObject():
             self.LP_record = LP_rec
             self.LP_recognized = True
 
-
-
 class DetectionAccountant():
 
     def __init__(self, absense_interval):
@@ -251,6 +249,16 @@ class DetectionAccountant():
         
         #lp_json = json.loads(frame_detections[obj_id][2])
         self.objects_buffers[obj_id].update_LP(lp_array)
+
+    def archive_all_object_buffer(self):
+        for key in self.objects_buffers:
+            #if object has big enough lifetime (age)
+            if (self.objects_buffers[key].age >= MIN_DETECTION_AGE):
+                if (self.objects_buffers[key].LP_measurement_samples>0):
+                    self.objects_buffers[key].getLPInfo()
+                self.archive_buffer.append(self.objects_buffers[key])
+            
+        self.objects_buffers = {}
 
     def get_objects_buffers(self):
         return list(self.objects_buffers.values())
