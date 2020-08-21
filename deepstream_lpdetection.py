@@ -24,6 +24,11 @@ import pyds
 
 fps_streams={}
 
+KS_lpd_CONFIG = "dstest_pgie_LP_KS_config.txt"
+fd_lpd_CONFIG = "dstest_pgie_LP_config.txt"
+
+FILE_CONFIG_LP = KS_lpd_CONFIG
+
 MAX_DISPLAY_LEN=64
 PGIE_CLASS_ID_VEHICLE = 0
 PGIE_CLASS_ID_BICYCLE = 1
@@ -281,7 +286,7 @@ def main(args):
     streammux.set_property('height', 1080)
     streammux.set_property('batch-size', number_sources)
     streammux.set_property('batched-push-timeout', 4000000)
-    pgie.set_property('config-file-path', "dstest_pgie_LP_config.txt")
+    pgie.set_property('config-file-path', FILE_CONFIG_LP)
     pgie_batch_size=pgie.get_property("batch-size")
     if(pgie_batch_size != number_sources):
         print("WARNING: Overriding infer-config batch-size",pgie_batch_size," with number of sources ", number_sources," \n")

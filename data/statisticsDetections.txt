@@ -1,0 +1,5 @@
+1;2020-08-10 21:38:12.233109;2020-08-10 21:45:17.708513;29;0;{'directionUNK-Coupe': 13, 'directionUNK-Car': 16};
+2;2020-08-10 21:45:17.708513;2020-08-10 21:51:39.849922;33;1;{'directionUNK-Coupe': 12, 'direction0-Car': 9, 'directionUNK-Car': 9, 'direction0-Coupe': 3};
+3;2020-08-10 21:51:39.849922;2020-08-10 21:58:47.030994;35;1;{'direction0-Coupe': 4, 'directionUNK-Coupe': 9, 'directionUNK-Car': 7, 'direction0-Car': 15};
+4;2020-08-10 21:58:47.030994;2020-08-10 22:07:26.846820;21;1;{'directionUNK-Coupe': 6, 'direction0-Car': 10, 'directionUNK-Car': 2, 'direction0-Coupe': 3};
+5;2020-08-10 22:07:26.846820;2020-08-10 22:11:11.368794;16;0;{'directionUNK-Car': 7, 'directionUNK-Coupe': 9};

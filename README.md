@@ -3,6 +3,8 @@
 Deepstream 5.0 Python application<br>
 Application can read one RTSP Stream/Video file, perform traffic statistics calculation and license plate recognition, output rtsp stream and AWS IoT Messages<br>
 
+[Project documentation](https://docs.google.com/document/d/1AmKgb2SDzw7zBTJU8LNko5U9y1sy1nP9aKoB9-h3jLU/edit#heading=h.iwpwcwbb2cso)
+
 ## Pipeline
 
 - One input source (rtsp/file[mp4])

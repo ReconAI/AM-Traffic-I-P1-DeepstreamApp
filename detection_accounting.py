@@ -70,23 +70,35 @@ class LicensePlateRecord():
         self.matches_template = matches_template
         self.confidence = confidence
 
+class ExitPoint():
+    def __init__(self, label, X, Y, W, classes_stats):
+        self.label = label # -1;0;1...
+        self.X = X
+        self.Y = Y
+        self.W = W #number of objects
+        self.classes_stats = classes_stats #dict with {obj_class:num_of_objects}
+
+    def toString(self):
+        return f"{self.label}:{self.X}:{self.Y}:{self.W}:{self.classes_stats}"
+
+    def printExitPoint(self):
+        print(self.toString())
+
 class TrafficStats():
 
-    def __init__(self, start_dt, end_dt, statistics_dict, objects_num, clusters_num, clusterCentroids_dict):
+    def __init__(self, start_dt, end_dt, traffic_points):
         self.start_dt = start_dt
         self.end_dt = end_dt
-        self.StatisticsDict = statistics_dict
-        self.ObjNum = objects_num
-        self.ClustNum = clusters_num
-        self.CentroidsDict = clusterCentroids_dict
-
+        self.traffic_points = traffic_points #list of ExitPoint's
+        
     def printStats(self):
         print('Traffic Stats:')
         print('Timeframe between: {0} and {1}'.format(self.start_dt,self.end_dt))
-        print('Number of clusters: %d' % self.ClustNum)
-        print('Number of objects: %d' % self.ObjNum)
-        print('Statistics Dict:{0}'.format(self.StatisticsDict))
-        print('Centroids Dict:{0}'.format(self.CentroidsDict))
+        
+        for x in self.traffic_points:
+            x.printExitPoint()
+
+        print(f"Number of Exit points: {len(self.traffic_points)}")
 
 class DetectionObject():
 
@@ -176,6 +188,8 @@ class DetectionAccountant():
 
         self.archive_update_df = datetime.datetime.now()
         
+        self.traffic_stats = None
+
     def process_next_frame(self, frame_detections):
         '''
         Updates buffer
@@ -223,17 +237,17 @@ class DetectionAccountant():
             objs_to_archive.append(obj_id)
         return objs_to_archive
 
-    def update_present_object(self, obj_id, frame_detections):
+    def update_present_object(self, obj_id, p_frame_detections):
         '''Drop abscense counter, '''
         if obj_id in self.absence_count:
             # was missing, reset its missing counter
             self.absence_count[obj_id] = 0
 
-        location_array = frame_detections[obj_id][0]
-        lp_location_array = frame_detections[obj_id][1]
-        lp_array = frame_detections[obj_id][2]
-        base_class = frame_detections[obj_id][3]
-        secondary_class = frame_detections[obj_id][4]
+        location_array = p_frame_detections[obj_id][0]
+        lp_location_array = p_frame_detections[obj_id][1]
+        lp_array = p_frame_detections[obj_id][2]
+        base_class = p_frame_detections[obj_id][3]
+        secondary_class = p_frame_detections[obj_id][4]
 
         # update primary class
         self.objects_buffers[obj_id].update_primary_class(base_class)
@@ -247,7 +261,7 @@ class DetectionAccountant():
         # update license plate location information
         self.objects_buffers[obj_id].update_lp_location(lp_location_array[0],lp_location_array[1],lp_location_array[2],lp_location_array[3])
         
-        #lp_json = json.loads(frame_detections[obj_id][2])
+        #lp_json = json.loads(p_frame_detections[obj_id][2])
         self.objects_buffers[obj_id].update_LP(lp_array)
 
     def archive_all_object_buffer(self):
@@ -280,7 +294,7 @@ class DetectionAccountant():
             
 
     def print_archve_buffer(self):
-        print('Archive buffer:')
+        print('Archive Buffer:')
         print('Len: {0}'.format(len(self.archive_buffer)))
         if (len(self.archive_buffer)>0):
             v_buffer_object = self.archive_buffer[-1]
@@ -295,11 +309,23 @@ class DetectionAccountant():
                 SGIE_LABELS_DICT[v_buffer_object.sgie_id]
                 ))
 
-    def calculate_archive_buffer_cluster(self):
-        
+    def calculate_traffic_stats(self, use_prev_traffic_stats=True):
+
         print('Clustering in progress')
         points = []
         obj_types = []
+        
+        if (use_prev_traffic_stats):
+            current_traffic_points = []
+
+            if (self.traffic_stats is not None):
+                current_traffic_points = self.traffic_stats.traffic_points
+            
+            for v_ExitPoint in current_traffic_points:
+                for v_key in v_ExitPoint.classes_stats:
+                    for i in range(0,int(v_ExitPoint.classes_stats[v_key])):
+                        points.append([v_ExitPoint.X,v_ExitPoint.Y])
+                        obj_types.append(v_key)
 
         for v_archive_item in self.archive_buffer:
             X = int(v_archive_item.last_location_x1 + (v_archive_item.last_location_x2-v_archive_item.last_location_x1)/2)
@@ -307,50 +333,64 @@ class DetectionAccountant():
             points.append([X,Y])
 
             if (v_archive_item.pgie_id == PGIE_CLASS_ID_VEHICLE and v_archive_item.sgie_id != -1) :
-                obj_types.append(SGIE_LABELS_DICT[v_archive_item.pgie_id])
+                obj_types.append(SGIE_LABELS_DICT[v_archive_item.sgie_id])
             else:
                 obj_types.append(PGIE1_LABELS_DICT[v_archive_item.pgie_id])
 
         points_scaled = StandardScaler().fit_transform(points)
-        db = DBSCAN(eps=DBSCAN_EPSILON, min_samples=DBSCAN_SAMPLES).fit(points_scaled)
+
+        print(f"Len points:{len(points)}")
+        print(f"Len points:{len(points_scaled)}")
         
+        db = DBSCAN(eps=DBSCAN_EPSILON, min_samples=DBSCAN_SAMPLES, p=2, metric='minkowski').fit(points_scaled)
+
         labels = db.labels_
-        
-        statistics_dict = {}
-        clusters_dict = {}
+
+        traffic_points = []
+
+        points_dict = {}
+        weights_dict = {}
+        obj_types_dict = {}
 
         cnt_i = 0
         for label, obj_type in zip(labels, obj_types):
-            if (label == -1):
-                label = 'UNK'
-
-            key_val = 'direction{0}-{1}'.format(label,obj_type)
-            if key_val in statistics_dict:
-                statistics_dict[key_val] += 1
+            if label == -1:
+                x,y = points[cnt_i]
+                traffic_points.append(ExitPoint(label,x,y,1,{obj_type:1}))
             else:
-                statistics_dict[key_val] = 1
+                #put x,y,obj_type in corresponding dict
+                if label not in points_dict:
+                    weights_dict[label] = 0
+                    points_dict[label] = []
+                    obj_types_dict[label] = []
 
-            if label not in clusters_dict:
-                clusters_dict[label] = []
-            
-            clusters_dict[label].append(points[cnt_i])
+                weights_dict[label] += 1
+                points_dict[label].append(points[cnt_i])
+                obj_types_dict[label].append(obj_type)
 
             cnt_i += 1
 
-        clusterCenters_dict = {}
-        for v_key in clusters_dict:
-            points_arr = clusters_dict[v_key]
+        for v_key in points_dict:
+            points_arr = points_dict[v_key]
+            weight = weights_dict[v_key]
+            obj_types_arr = obj_types_dict[v_key]
+            
             x = [p[0] for p in points_arr]
             y = [p[1] for p in points_arr]
-            centroid = (sum(x) / len(points_arr), sum(y) / len(points_arr))
-            clusterCenters_dict[v_key] = centroid
+            centroid = (int(sum(x) / len(points_arr)), int(sum(y) / len(points_arr)))
 
-        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+            #apply counter
+            statistics_dict = Counter(obj_types_arr)
+
+            traffic_points.append(ExitPoint(v_key,centroid[0],centroid[1],weight,statistics_dict))
+
         v_dt_now = datetime.datetime.now()
         arch_upd_dt = self.archive_update_df
         self.archive_update_df = v_dt_now
         
-        return TrafficStats(arch_upd_dt,v_dt_now,statistics_dict,len(points_scaled),n_clusters_,clusterCenters_dict)
+        self.traffic_stats = TrafficStats(arch_upd_dt,v_dt_now,traffic_points)
+
+        return self.traffic_stats
         
     def clear_archive_buffer(self):
         self.archive_buffer = []

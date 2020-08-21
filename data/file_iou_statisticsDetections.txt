@@ -1,0 +1,60 @@
+-----
+Timeframe: 2020-08-16 17:40:34.530059 - 2020-08-16 17:50:08.424199
+ObjNum: 27
+ClustNum: 0
+StatsDict: {'directionUNK-Car': 9, 'directionUNK-Coupe': 18}
+CentroidsDict: {'UNK': (607.074074074074, 1135.2592592592594)}
+-----
+Timeframe: 2020-08-16 17:50:08.424199 - 2020-08-16 17:58:53.073611
+ObjNum: 35
+ClustNum: 1
+StatsDict: {'directionUNK-Car': 10, 'direction0-Car': 6, 'directionUNK-Coupe': 14, 'direction0-Coupe': 5}
+CentroidsDict: {'UNK': (785.2916666666666, 988.4166666666666), 0: (253.9090909090909, 1831.8181818181818)}
+-----
+Timeframe: 2020-08-16 17:58:53.073611 - 2020-08-16 18:07:48.510267
+ObjNum: 25
+ClustNum: 1
+StatsDict: {'direction0-Coupe': 5, 'directionUNK-Coupe': 9, 'direction0-Car': 9, 'directionUNK-Car': 2}
+CentroidsDict: {0: (209.5, 1767.9285714285713), 'UNK': (886.9090909090909, 919.7272727272727)}
+-----
+Timeframe: 2020-08-16 18:07:48.510267 - 2020-08-16 18:18:24.337968
+ObjNum: 23
+ClustNum: 1
+StatsDict: {'directionUNK-Car': 4, 'directionUNK-Coupe': 4, 'direction0-Car': 8, 'direction0-Coupe': 7}
+CentroidsDict: {'UNK': (852.75, 1227.75), 0: (250.33333333333334, 1823.0666666666666)}
+-----
+Timeframe: 2020-08-16 18:18:24.337968 - 2020-08-16 18:22:58.572633
+ObjNum: 22
+ClustNum: 0
+StatsDict: {'directionUNK-Car': 9, 'directionUNK-Coupe': 13}
+CentroidsDict: {'UNK': (547.6818181818181, 1290.2272727272727)}
+-----
+Timeframe: 2020-08-16 18:53:52.818679 - 2020-08-16 19:00:58.687210
+ObjNum: 29
+ClustNum: 0
+StatsDict: {'directionUNK-Coupe': 13, 'directionUNK-Car': 16}
+CentroidsDict: {'UNK': (528.3448275862069, 955.0)}
+-----
+Timeframe: 2020-08-16 19:00:58.687210 - 2020-08-16 19:07:16.747388
+ObjNum: 35
+ClustNum: 1
+StatsDict: {'directionUNK-Coupe': 15, 'direction0-Car': 6, 'directionUNK-Car': 10, 'direction0-Coupe': 4}
+CentroidsDict: {'UNK': (650.92, 825.56), 0: (228.9, 1812.6)}
+-----
+Timeframe: 2020-08-16 19:07:16.747388 - 2020-08-16 19:14:20.169089
+ObjNum: 42
+ClustNum: 1
+StatsDict: {'direction0-Coupe': 4, 'directionUNK-Coupe': 9, 'directionUNK-Car': 11, 'direction0-Car': 18}
+CentroidsDict: {0: (189.9090909090909, 1746.590909090909), 'UNK': (703.0, 749.25)}
+-----
+Timeframe: 2020-08-16 19:14:20.169089 - 2020-08-16 19:23:09.681763
+ObjNum: 21
+ClustNum: 1
+StatsDict: {'directionUNK-Coupe': 6, 'direction0-Car': 10, 'directionUNK-Car': 2, 'direction0-Coupe': 3}
+CentroidsDict: {'UNK': (805.625, 1140.875), 0: (251.53846153846155, 1826.4615384615386)}
+-----
+Timeframe: 2020-08-16 19:23:09.681763 - 2020-08-16 19:26:52.051249
+ObjNum: 20
+ClustNum: 0
+StatsDict: {'directionUNK-Car': 9, 'directionUNK-Coupe': 11}
+CentroidsDict: {'UNK': (524.1, 1110.45)}

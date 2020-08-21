@@ -271,13 +271,28 @@ def generate_event_msg_meta(data, p_object):
         meta.extMsgSize = sys.getsizeof(pyds.NvDsPersonObject)
     return meta
 
-def processArchiveBuffer(frame_n, batch_meta, frame_meta, sendMessages = SEND_IOT_MESSAGES):
+def processArchiveBuffer(frame_n, batch_meta, frame_meta, sendMessages = SEND_IOT_MESSAGES, saveImageWithExitPoints = False, frame_image = None):
     global global_detection_accountant
     if (len(global_detection_accountant.archive_buffer) > 0):
         global_detection_accountant.print_archve_buffer()
-        v_trafficStats = global_detection_accountant.calculate_archive_buffer_cluster()
+        v_trafficStats = global_detection_accountant.calculate_traffic_stats()
         v_trafficStats.printStats()
-        
+
+        if (saveImageWithExitPoints):
+            if (frame_image is not None):
+                print('Drawing and saving image')
+                out_image = frame_image.copy()
+                for v_ExitPoint in v_trafficStats.traffic_points:
+                    v_ExitPoint.label
+
+                    circle_color = (255, 0, 0)
+                    if (v_ExitPoint.label = -1):
+                        circle_color = (0, 255, 0)
+                    
+                    out_image = cv2.circle(out_image, (v_ExitPoint.X,v_ExitPoint.Y), 3, circle_color, 2) 
+
+                cv2.imwrite(f"{APPLICATION_PATH}/TrafficStats_{frame_n}_image.jpg",out_image)
+                
         if (SAVE_ARCHIVE_TO_FILE):
             arch_file = open(os.path.join(APPLICATION_PATH,ARCHIVE_FILENAME), "a+")
             print('Saving archive to file on frame #{0}'.format(frame_n))
@@ -291,10 +306,8 @@ def processArchiveBuffer(frame_n, batch_meta, frame_meta, sendMessages = SEND_IO
             print('Saving statistics to file on frame #{0}'.format(frame_n))
             ts_file.write('-'*5 + os.linesep)
             ts_file.write(f"Timeframe: {v_trafficStats.start_dt} - {v_trafficStats.end_dt}" + os.linesep)
-            ts_file.write(f"ObjNum: {v_trafficStats.ObjNum}" + os.linesep)
-            ts_file.write(f"ClustNum: {v_trafficStats.ClustNum}" + os.linesep)
-            ts_file.write(f"StatsDict: {v_trafficStats.StatisticsDict}" + os.linesep)
-            ts_file.write(f"CentroidsDict: {v_trafficStats.CentroidsDict}" + os.linesep)
+            for v_ExitPoint in v_trafficStats.traffic_points:
+                ts_file.write(v_ExitPoint.toString() + os.linesep)
             ts_file.close()
 
         if (sendMessages):
@@ -365,6 +378,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         
         detected_objects = {}
 
+        frame_image = None
+
         while l_obj is not None:
             try:
                 # Casting l_obj.data to pyds.NvDsObjectMeta
@@ -389,6 +404,17 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                     sgie_class = label_info.result_class_id
 
                 obj_counter[obj_meta.class_id] += 1
+
+                if (SAVE_BBOXES_EACHFRAME):
+                    bboxes_file = open(os.path.join(APPLICATION_PATH,BBOXES_EACHFRAME_FILENAME), "a+")
+                    rect_params=obj_meta.rect_params
+                    top=int(rect_params.top)
+                    left=int(rect_params.left)
+                    width=int(rect_params.width)
+                    height=int(rect_params.height)
+                    bboxItem_string = f"Class:Vehicle;id:{obj_meta.object_id};Top:{top};Left:{left};Width:{width};Height:{height}"
+                    bboxes_file.write(bboxItem_string + os.linesep)
+                    bboxes_file.close()
 
                 if (frame_n % ALPR_FRAME_RATE == 0):
 
@@ -431,8 +457,8 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         #global_detection_accountant.print_objects_buffers()
 
         if (frame_n % MSQ_FRAME_RATE == 0):
-            processArchiveBuffer(frame_n, batch_meta, frame_meta)
-            
+            processArchiveBuffer(frame_n, batch_meta, frame_meta, saveImageWithExitPoints = True, frame_image = frame_image)
+
         #Draw license plate location.
         lp_objectIds = detected_objects_copy.keys()
 
@@ -448,6 +474,17 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 lp_rect_params.left = int(lp_detection_object.last_lp_location_y1 + lp_detection_object.last_location_y1)
                 lp_rect_params.width = int(lp_detection_object.last_lp_location_y2 - lp_detection_object.last_lp_location_y1)
                 
+                if (SAVE_BBOXES_EACHFRAME):
+                    bboxes_file = open(os.path.join(APPLICATION_PATH,BBOXES_EACHFRAME_FILENAME), "a+")
+                    rect_params=obj_meta.rect_params
+                    top=int(rect_params.top)
+                    left=int(rect_params.left)
+                    width=int(rect_params.width)
+                    height=int(rect_params.height)
+                    bboxItem_string = f"Class:LP;id:-1;Top:{top};Left:{left};Width:{width};Height:{height}"
+                    bboxes_file.write(bboxItem_string + os.linesep)
+                    bboxes_file.close()
+
                 if (ANONYMIZE_LICENSE_PLATES):
                     lp_rect_params.has_bg_color = 1
                     lp_rect_params.bg_color.set(1, 0, 1, 0.9)
