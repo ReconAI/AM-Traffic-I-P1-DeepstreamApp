@@ -1,7 +1,7 @@
 # AM-Traffic-I Phase 1 Deepstream SDK Application (Python)
 
 Deepstream 5.0 Python application<br>
-Application can read one RTSP Stream/Video file, perform traffic statistics calculation and license plate recognition, output rtsp stream and AWS IoT Messages<br>
+Application can read one RTSP Stream/Video file, perform traffic statistics calculation and license plate recognition, output rtsp stream, save metadata to a file and send AWS IoT Messages<br>
 
 [Project documentation](https://docs.google.com/document/d/1AmKgb2SDzw7zBTJU8LNko5U9y1sy1nP9aKoB9-h3jLU/edit#heading=h.iwpwcwbb2cso)
 
@@ -12,7 +12,7 @@ Application can read one RTSP Stream/Video file, perform traffic statistics calc
 - KLT tracker
 - Secondary network - car type classifier (Car, Coupe, LargeVehicle,Sedan,SUV,Truck,Van)
 - OpenALPR license plate recognizer
-- rtsp output + AWS IoT Messages
+- rtsp output + Metadata save + AWS IoT Messages
 
 ## How application works
 
@@ -32,11 +32,15 @@ FPS: 5.8 - 18
 
 ## Installation
 
-Put project folder into '/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic'
+- Install Deepstream SDK 5.0
+- Put project into folder '/opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic'
+- Install requirements
+- Make sure that TrafficCamNet, fd_pld, VehicleTypeNet networks are placed into models folder
+- Install OpenALPR
 
 ## Configurations
 
-Configuration parameters can be found in 'deepstream_config.py' file
+Configuration parameters can be found in 'deepstream_config.py' file. Parameters purpose and description can be found in the same file.
 
 ## How to run
 
@@ -60,6 +64,32 @@ python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0
 
 python3 deepstream_amtraffic_msq.py rtsp://192.168.100.2:8554
 ```
+
+### Expected result
+
+1. Command line output with metadata
+
+2. Three text files in application folder:
+- file_licensePlatesDetections.txt - list of recognized license plates
+- file_archiveDetections.txt - list of detected objects
+- file_statisticsDetections.txt - traffic statistics
+*actual filenames can be seen in deepstream_config.py under LICENSE_PLATES_FILENAME, ARCHIVE_FILENAME, STATISTICS_FILENAME variables
+
+## Results validation
+
+### License plate recognition
+
+Run following commands:
+```sh
+// This command will compare actual readable license plates on a video and license paltes detected by and application, and calculate quality metrics
+python test/test_lpcomparison.py --gtLP=data/lane0+1.txt --recLP=data/file_licensePlatesDetections.txt
+```
+
+### Traffic statistics
+
+Open file_statisticsDetections.txt and investigate last record. Pay attention to the number of vehicles and vehicle types
+Compare it to '<File with statistics>'
+Calcualte accuracy using...
 
 ## Testing Instruction
 

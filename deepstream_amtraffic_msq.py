@@ -456,7 +456,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         global_detection_accountant.process_next_frame(detected_objects)
         #global_detection_accountant.print_objects_buffers()
 
-        if (frame_n % MSQ_FRAME_RATE == 0):
+        if (frame_n % TRAFFICSTATS_FRAME_RATE == 0):
             processArchiveBuffer(frame_n, batch_meta, frame_meta, saveImageWithExitPoints = True, frame_image = frame_image)
 
         #Draw license plate location.

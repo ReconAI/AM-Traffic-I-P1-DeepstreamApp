@@ -130,3 +130,10 @@ if __name__ == "__main__":
         print(f">>Extra recognitions: {len_recLPs - len_gtLPs}")
 
     print(f">>Char recognition statistics: {round((num_charRecognized/num_charTotal*100),2)}%; {num_charRecognized} out of {num_charTotal}")
+
+    print('-'*5)
+
+    print(f">>Accuracy: {round((len_matchLPs/len_gtLPs*100),2)}% ")
+    print(f">>Precision: {round((len_matchLPs/len_recLPs),2)} )")
+    print(f">>Recall: {round((len_matchLPs/len_gtLPs),2)} )")
+    print(f">>Discrete Accuracy: {round((len_matchLPs/len_recLPs),2)} )")
