@@ -62,7 +62,7 @@ or
 python3 deepstream_amtraffic_msq.py rtsp://<PATH_TO_A_FILE>
 ```
 
-Check 'rtsp://<IP>:8554/ds-test' for RTSP stream
+Check 'rtsp://<IP>:8555/ds-test' for RTSP stream
 
 Examples:
 ```sh
