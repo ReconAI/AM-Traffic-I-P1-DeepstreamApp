@@ -26,9 +26,20 @@ Application can read one RTSP Stream/Video file, perform traffic statistics calc
 8. Once in O frames (MSQ_FRAME_RATE) pointer goes over Archive, composes individual Vehicle messages and one Traffic Statistics message and sends them to the AWS
 
 ## Performance
-Hardware: Jetson Nano
-Input: 720p video
-FPS: 5.8 - 18
+Hardware: Jetson Nano<br>
+Input: 720p video<br>
+FPS: 5.9 - 20<br>
+
+## Feature metrics
+
+### License Plate recognition
+Accuracy: 52.63%<br>
+Precision: 0.76<br>
+Recall: 0.53<br>
+
+### Traffic Statistics
+Precision: 0.87<br>
+Recall: 1.00<br>
 
 ## Installation
 
@@ -56,10 +67,6 @@ Check 'rtsp://<IP>:8554/ds-test' for RTSP stream
 Examples:
 ```sh
 cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
-python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test3.mp4
-
-python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/sample_720p.mp4
-
 python3 deepstream_amtraffic_msq.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/18_LPs_1280_Trim.mp4
 
 python3 deepstream_amtraffic_msq.py rtsp://192.168.100.2:8554
@@ -81,27 +88,20 @@ python3 deepstream_amtraffic_msq.py rtsp://192.168.100.2:8554
 
 Run following commands:
 ```sh
-// This command will compare actual readable license plates on a video and license paltes detected by and application, and calculate quality metrics
-python test/test_lpcomparison.py --gtLP=data/lane0+1.txt --recLP=data/file_licensePlatesDetections.txt
+cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
+python3 test/test_lpcomparison.py --gtLP=data/laneALL.txt --recLP=file_licensePlatesDetections.txt
 ```
 
 ### Traffic statistics
 
-Open file_statisticsDetections.txt and investigate last record. Pay attention to the number of vehicles and vehicle types
-Compare it to '<File with statistics>'
-Calcualte accuracy using...
-
-## Testing Instruction
-
-[Instruction](https://docs.google.com/document/d/1hDoDEHMTkMPDQZCvGM-OgKTn2EXkXXvS0UaDlJ75vEw/edit)
-
-## License plate detection single-network application test
+Run following commands
 ```sh
 cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
-
-python3 deepstream_lpdetection.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/18_LPs_1280_Trim.mp4
-
-python3 deepstream_lpdetection.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test3.mp4
+python3 test/test_trafficstatistics.py --stats=file_statisticsDetections.txt --gtVehicles=102
 ```
 
-https://github.com/ReconAI/AMTrafficPhase2-face-licenseplate-detection/tree/master/Detectnet_resnet10
+## Instruction
+
+[Final Report](https://docs.google.com/document/d/1AmKgb2SDzw7zBTJU8LNko5U9y1sy1nP9aKoB9-h3jLU/edit#)
+[Edge device setup](https://github.com/ReconAI/EdgeDeviceSetup)
+[Testing preparation and Perm Nano connection](https://docs.google.com/document/d/1hDoDEHMTkMPDQZCvGM-OgKTn2EXkXXvS0UaDlJ75vEw/edit)
