@@ -98,6 +98,9 @@ Calcualte accuracy using...
 ## License plate detection single-network application test
 ```sh
 cd /opt/nvidia/deepstream/deepstream-5.0/sources/python/apps/deepstream-amtraffic
+
+python3 deepstream_lpdetection.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/18_LPs_1280_Trim.mp4
+
 python3 deepstream_lpdetection.py file:///opt/nvidia/deepstream/deepstream-5.0/samples/streams/StreamRecord_cam2_test3.mp4
 ```
 

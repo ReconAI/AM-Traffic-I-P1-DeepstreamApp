@@ -1,0 +1,4 @@
+Timeframe: 2020-08-23 01:25:55.711457 - 2020-08-23 01:25:55.798155
+2:419:454:15:Counter({'Car': 9, 'Truck': 2, 'Van': 2, 'Sedan': 2})
+0:846:700:41:Counter({'Car': 16, 'Sedan': 7, 'Van': 6, 'Truck': 4, 'LargeVehicle': 4, 'Coupe': 3, 'SUV': 1})
+1:202:1771:60:Counter({'Car': 43, 'Coupe': 14, 'Van': 2, 'LargeVehicle': 1})

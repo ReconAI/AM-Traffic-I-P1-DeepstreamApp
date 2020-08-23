@@ -275,7 +275,9 @@ def processArchiveBuffer(frame_n, batch_meta, frame_meta, sendMessages = SEND_IO
     global global_detection_accountant
     if (len(global_detection_accountant.archive_buffer) > 0):
         global_detection_accountant.print_archve_buffer()
-        v_trafficStats = global_detection_accountant.calculate_traffic_stats()
+
+        USE_PREV_STATISTICS = True
+        v_trafficStats = global_detection_accountant.calculate_traffic_stats(USE_PREV_STATISTICS)
         v_trafficStats.printStats()
 
         if (saveImageWithExitPoints):
@@ -286,10 +288,10 @@ def processArchiveBuffer(frame_n, batch_meta, frame_meta, sendMessages = SEND_IO
                     v_ExitPoint.label
 
                     circle_color = (255, 0, 0)
-                    if (v_ExitPoint.label = -1):
+                    if (v_ExitPoint.label == -1):
                         circle_color = (0, 255, 0)
                     
-                    out_image = cv2.circle(out_image, (v_ExitPoint.X,v_ExitPoint.Y), 3, circle_color, 2) 
+                    out_image = cv2.circle(out_image, (v_ExitPoint.Y,v_ExitPoint.X), 3, circle_color, 2) 
 
                 cv2.imwrite(f"{APPLICATION_PATH}/TrafficStats_{frame_n}_image.jpg",out_image)
                 
@@ -302,12 +304,14 @@ def processArchiveBuffer(frame_n, batch_meta, frame_meta, sendMessages = SEND_IO
             arch_file.close()
 
         if (SAVE_STATISTICS_TO_FILE):
-            ts_file = open(os.path.join(APPLICATION_PATH,STATISTICS_FILENAME), "a+")
+            write_mode = 'w+' if USE_PREV_STATISTICS else 'a+'
+            ts_file = open(os.path.join(APPLICATION_PATH,STATISTICS_FILENAME), write_mode)
             print('Saving statistics to file on frame #{0}'.format(frame_n))
-            ts_file.write('-'*5 + os.linesep)
             ts_file.write(f"Timeframe: {v_trafficStats.start_dt} - {v_trafficStats.end_dt}" + os.linesep)
             for v_ExitPoint in v_trafficStats.traffic_points:
-                ts_file.write(v_ExitPoint.toString() + os.linesep)
+                # don't print outliers
+                if (v_ExitPoint.label != -1):
+                    ts_file.write(v_ExitPoint.toString() + os.linesep)
             ts_file.close()
 
         if (sendMessages):
@@ -457,7 +461,7 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
         #global_detection_accountant.print_objects_buffers()
 
         if (frame_n % TRAFFICSTATS_FRAME_RATE == 0):
-            processArchiveBuffer(frame_n, batch_meta, frame_meta, saveImageWithExitPoints = True, frame_image = frame_image)
+            processArchiveBuffer(frame_n, batch_meta, frame_meta, saveImageWithExitPoints = SAVE_IMAGES_WITH_EXIT_POINTS, frame_image = frame_image)
 
         #Draw license plate location.
         lp_objectIds = detected_objects_copy.keys()

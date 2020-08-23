@@ -315,6 +315,9 @@ class DetectionAccountant():
         points = []
         obj_types = []
         
+        v_dt_now = datetime.datetime.now()
+        arch_upd_dt = self.archive_update_df
+
         if (use_prev_traffic_stats):
             current_traffic_points = []
 
@@ -323,9 +326,13 @@ class DetectionAccountant():
             
             for v_ExitPoint in current_traffic_points:
                 for v_key in v_ExitPoint.classes_stats:
-                    for i in range(0,int(v_ExitPoint.classes_stats[v_key])):
+                    for _ in range(0,int(v_ExitPoint.classes_stats[v_key])):
                         points.append([v_ExitPoint.X,v_ExitPoint.Y])
-                        obj_types.append(v_key)
+                        obj_types.append(v_key)    
+        else:
+            self.archive_update_df = v_dt_now
+            
+
 
         for v_archive_item in self.archive_buffer:
             X = int(v_archive_item.last_location_x1 + (v_archive_item.last_location_x2-v_archive_item.last_location_x1)/2)
@@ -384,9 +391,6 @@ class DetectionAccountant():
 
             traffic_points.append(ExitPoint(v_key,centroid[0],centroid[1],weight,statistics_dict))
 
-        v_dt_now = datetime.datetime.now()
-        arch_upd_dt = self.archive_update_df
-        self.archive_update_df = v_dt_now
         
         self.traffic_stats = TrafficStats(arch_upd_dt,v_dt_now,traffic_points)
 

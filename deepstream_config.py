@@ -9,7 +9,7 @@ BBOXES_EACHFRAME_FILENAME = 'file_bboxesEachFrame.txt'
 SAVE_IMAGES = False
 
 #Enable License Plate anonymization function
-ANONYMIZE_LICENSE_PLATES = False
+ANONYMIZE_LICENSE_PLATES = True
 
 #Save detected license plate information into a file located in application folder
 SAVE_LICENSE_PLATES_TO_FILE = True
@@ -23,12 +23,14 @@ ARCHIVE_FILENAME = 'file_archiveDetections.txt'
 SAVE_STATISTICS_TO_FILE = True
 STATISTICS_FILENAME = 'file_statisticsDetections.txt'
 
+#When TRAFFICSTATS_FRAME_RATE triggers, save image with current traffic points (where small circles are points, green - not-clustered, blue - clustered)
+SAVE_IMAGES_WITH_EXIT_POINTS = False
+
 #Send IOT MQTT messages to AWS IoT service
 SEND_IOT_MESSAGES = False
 
 #Print debug information
 PRINT_DEBUG = False
-
 
 #Number of frames to run License Plate detection and recognition algorithms
 ALPR_FRAME_RATE = 5

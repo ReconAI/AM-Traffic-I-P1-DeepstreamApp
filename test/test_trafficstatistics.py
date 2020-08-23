@@ -1,45 +1,49 @@
-# License plate comparison script
+# Traffic Statistics comarison script
 # Input:
-# CorrectLicensePlates.txt - list of ground truth license plates from a video
+# - stats_data.txt - statistical output
+# - Ground truth number of vehicles
 ## 
-# RecognizedLicensePlates.txt - list of recognized license plates after a video processing
 # Output:
-# Detection statistics
+# Traffic Statistics quality metrics
 
 #Usage:
-# python test_trafficstatistics.py --gtLP=../data/validLPs.txt --recLP=../data/testLPs_tracker1.txt
+# python test_trafficstatistics.py --stats=../data/stats_data.txt --gtVehicles=102
 
 import os
 import argparse
 
-def compareLPs(plate1, plate2):
-    if (len(plate1) != len(plate2)):
-        return -1
-
-    n_matches = 0
-    for a,b in zip(plate1,plate2):
-        if a == b:
-            n_matches += 1
-    
-    return n_matches
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='License plate comparison script')
-    parser.add_argument('--gtLP', dest='file_gtLP', help='Path to a file with correct license plates')
-    parser.add_argument('--recLP', dest='file_recLP', help='Path to a file with license plate recognitions')
+    parser.add_argument('--gtVehicles', dest='gtVehiclesNum', help='Ground Truth Number of vehicles')
+    parser.add_argument('--stats', dest='file_stats', help='Path to a file with license plate recognitions')
 
     args = parser.parse_args()
 
-    file_gtLP = args.file_gtLP
-    file_recLP = args.file_recLP
+    file_stats = args.file_stats
+    gtVehiclesNum = int(args.gtVehiclesNum)
 
-    print(f"Comparing GT data: {file_gtLP} with recognitions: {file_recLP}")
+    print(f"Checking Traffic stats from file: {file_stats}. Ground truth number of vehicles provided: {gtVehiclesNum}")
     
-    f = open(file_gtLP, "r")
-    list_gtLPs = f.read().splitlines()
-    f.close() 
-
-    f = open(file_recLP, "r")
+    f = open(file_stats, "r")
     list_recLPs = f.read().splitlines()
     f.close() 
+
+    recVehicleNum = 0
+
+    for v_line in list_recLPs:
+        if "Timeframe" not in v_line:
+            numVehicles = int(v_line.split(':')[3])
+            recVehicleNum += numVehicles
+
+    if (recVehicleNum>gtVehiclesNum):
+        precision = gtVehiclesNum/recVehicleNum
+        recall = 1
+    else:
+        precision = 1
+        recall = recVehicleNum/gtVehiclesNum
+    
+    print(f'Precision:{precision}')
+    print(f'Recall:{recall}')
+    print(f"Number of vehicles on the video:{gtVehiclesNum}")
+    print(f"Number of vehicles detected by algorithm:{recVehicleNum}")
